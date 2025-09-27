@@ -1,0 +1,17 @@
+name: sample_site
+urls:
+  - https://example.com/list
+selectors:
+  item: ".item"
+  title: ".title"
+  link: ".link a::attr(href)"
+pagination:
+  type: query_param
+  param: page
+  start: 1
+  max_pages: 3
+dedupe_keys:
+  - title
+output:
+  sheet_tab: Sheet1
+min_rows: 1

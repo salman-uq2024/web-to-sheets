@@ -1,0 +1,27 @@
+name: Scraper CI
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Daily
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        site: ${{ fromJSON(vars.SITES || '["sample"]') }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - run: pip install -r requirements.txt
+      - run: python -m src.cli run ${{ matrix.site }}
+      - uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.site }}-csv
+          path: ${{ matrix.site }}.csv
+      - uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.site }}-logs
+          path: logs/

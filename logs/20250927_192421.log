@@ -1,0 +1,2 @@
+2025-09-27 19:24:22,530 - ERROR - Failed to scrape https://example.com/list: Timeout value connect was {'connect': 10, 'read': 20}, but it must be an int, float or None.
+2025-09-27 19:24:22,535 - ERROR - Insufficient data: 0 < 1
