@@ -10,14 +10,26 @@ class DataProcessor:
 
     def process(self, data):
         deduped_data = []
+        pending_marks = []
         for item in data:
             dedupe_key = tuple(item[k] for k in self.config['dedupe_keys'])
             if not self.db.is_deduped(self.config['name'], dedupe_key):
                 deduped_data.append(item)
-                self.db.mark_deduped(self.config['name'], dedupe_key)
+                pending_marks.append(dedupe_key)
 
         if len(deduped_data) < self.config['min_rows']:
+            if pending_marks:
+                # We gathered new rows but did not hit the configured threshold.
+                raise ValueError(f"Insufficient data: {len(deduped_data)} < {self.config['min_rows']}")
+
+            if data:
+                self.logger.info("No new unique rows found; skipping export")
+                return []
+
             raise ValueError(f"Insufficient data: {len(deduped_data)} < {self.config['min_rows']}")
+
+        for dedupe_key in pending_marks:
+            self.db.mark_deduped(self.config['name'], dedupe_key)
 
         self.write_csv(deduped_data)
         return deduped_data

@@ -60,7 +60,8 @@ def run_site(site_name):
         processor = DataProcessor(config, logger)
         processed_data = processor.process(data)
         exporter = SheetsExporter(config, logger)
-        exporter.export(processed_data)
+        if processed_data:
+            exporter.export(processed_data)
         exit_code = 0
     except ValueError as e:
         logger.error(str(e))

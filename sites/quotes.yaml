@@ -1,0 +1,17 @@
+name: quotes
+urls:
+  - https://quotes.toscrape.com/
+selectors:
+  item: ".quote"
+  text: ".text"
+  author: ".author"
+  link: ".author + a::attr(href)"
+pagination:
+  type: next_link
+  next_selector: ".next a"
+  max_pages: 2
+dedupe_keys:
+  - text
+output:
+  sheet_tab: Sheet1
+min_rows: 1
