@@ -7,5 +7,4 @@ if [ ! -d "venv" ]; then
 fi
 
 source venv/bin/activate
-python -m src.cli validate quotes
-python -m src.cli run quotes --demo
+ws run quotes --demo

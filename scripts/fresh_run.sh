@@ -8,7 +8,7 @@ fi
 
 source venv/bin/activate
 
-rm -f dedupe.db out/quotes.csv
+rm -f dedupe.db out/*.csv
 rm -f logs/*.log 2>/dev/null || true
 
-python -m src.cli run quotes --demo
+ws run quotes --demo
