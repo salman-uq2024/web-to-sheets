@@ -1,6 +1,8 @@
 import time
 import random
-from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
+from pathlib import Path
+from types import SimpleNamespace
+from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlsplit, urlunsplit, unquote
 
 import requests
 from bs4 import BeautifulSoup
@@ -14,11 +16,19 @@ class Scraper:
         self.session = requests.Session()
         self.auth = Authenticator(self.session)
         self.auth.authenticate(config.get('auth', {}))
+        self.allowed_domains = set(config.get('allowed_domains', []))
+        self.demo_mode = config.get('demo_mode', False)
 
-    def scrape(self):
+    def scrape(self, demo_mode=False):
+        self.demo_mode = demo_mode or self.demo_mode
         data = []
         for url in self.config['urls']:
             try:
+                if self.allowed_domains and url.startswith(('http://', 'https://')):
+                    domain = urlparse(url).netloc
+                    if domain not in self.allowed_domains:
+                        self.logger.error(f"URL not in allowed domains: {url}")
+                        continue
                 items = self.scrape_url(url)
                 data.extend(items)
             except Exception as e:
@@ -71,6 +81,20 @@ class Scraper:
         retries = 3
         for attempt in range(retries):
             try:
+                parsed = urlsplit(url)
+                if parsed.scheme == 'file':
+                    path_str = parsed.path
+                    if parsed.netloc:
+                        path_str = f"//{parsed.netloc}{parsed.path}"
+                    file_path = Path(unquote(path_str))
+                    if not file_path.exists():
+                        raise FileNotFoundError(file_path)
+
+                    with open(file_path, 'r', encoding='utf-8') as handle:
+                        text = handle.read()
+
+                    return SimpleNamespace(text=text, raise_for_status=lambda: None)
+
                 timeout = (self.config['timeouts']['connect'], self.config['timeouts']['read'])
                 response = self.session.get(url, timeout=timeout,
                                             headers=self.config['headers'])
@@ -82,6 +106,8 @@ class Scraper:
                     time.sleep(wait)
                     continue
                 raise
+            except FileNotFoundError as e:
+                raise Exception(f"Fixture not found: {e}")
         raise Exception("Max retries exceeded")
 
     def extract_items(self, soup):
@@ -115,7 +141,7 @@ class Scraper:
         return urljoin(current_url, href)
 
     def rate_limit(self):
-        rps = self.config['rate_limit']['rps']
+        rps = max(self.config.get('rate_limit', {}).get('rps', 1), 1)
         time.sleep(1 / rps)
 
     def _apply_query_param(self, url, param, value):

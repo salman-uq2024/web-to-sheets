@@ -1,27 +1,33 @@
-name: Scraper CI
+name: CI
+
 on:
-  schedule:
-    - cron: '0 0 * * *'  # Daily
-  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
-  scrape:
+  tests:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        site: ${{ fromJSON(vars.SITES || '["sample"]') }}
+        python-version: ["3.11", "3.12"]
+
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
-      - run: pip install -r requirements.txt
-      - run: python -m src.cli run ${{ matrix.site }}
-      - uses: actions/upload-artifact@v3
-        with:
-          name: ${{ matrix.site }}-csv
-          path: ${{ matrix.site }}.csv
-      - uses: actions/upload-artifact@v3
-        with:
-          name: ${{ matrix.site }}-logs
-          path: logs/
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[dev]
+
+      - name: Run tests
+        run: pytest
+
+      - name: Validate demo config
+        run: python -m src.cli validate quotes

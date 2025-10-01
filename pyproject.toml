@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=69.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "web-to-sheets"
+version = "0.1.0"
+description = "CLI for scraping web data and exporting to Google Sheets"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+authors = [
+  { name = "Salman" }
+]
+dependencies = [
+  "requests>=2.31,<3",
+  "beautifulsoup4>=4.12,<5",
+  "pyyaml>=6.0",
+  "gspread>=5.12,<6",
+  "oauth2client>=4.1,<5"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.0",
+  "pytest-mock>=3.10"
+]
+
+[project.scripts]
+ws = "src.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src", "src.*"]

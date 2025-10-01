@@ -1,12 +1,20 @@
 import csv
-from .database import DedupeDB
+from pathlib import Path
+
+from .database import DedupeDB, InMemoryDedupeDB
 
 
 class DataProcessor:
-    def __init__(self, config, logger):
+    def __init__(self, config, logger, demo_mode=False, db=None):
         self.config = config
         self.logger = logger
-        self.db = DedupeDB()
+        self.demo_mode = demo_mode
+        if db is not None:
+            self.db = db
+        elif demo_mode:
+            self.db = InMemoryDedupeDB()
+        else:
+            self.db = DedupeDB()
 
     def process(self, data):
         deduped_data = []
@@ -38,8 +46,14 @@ class DataProcessor:
         if not data:
             return
         filename = f"{self.config['name']}.csv"
-        with open(filename, 'w', newline='') as f:
+        output_dir = self.config.get('output', {}).get('csv_dir')
+        if output_dir:
+            file_path = Path(output_dir) / filename
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+        else:
+            file_path = Path(filename)
+        with open(file_path, 'w', newline='') as f:
             writer = csv.DictWriter(f, fieldnames=data[0].keys())
             writer.writeheader()
             writer.writerows(data)
-        self.logger.info(f"CSV written: {filename}")
+        self.logger.info(f"CSV written: {file_path}")

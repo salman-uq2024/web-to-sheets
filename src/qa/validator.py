@@ -65,6 +65,19 @@ class SchemaValidator:
 
         if 'output' in config and not isinstance(config['output'], dict):
             self.errors.append("output must be a mapping with export settings")
+        elif isinstance(config.get('output'), dict):
+            csv_dir = config['output'].get('csv_dir')
+            if csv_dir is not None and not isinstance(csv_dir, str):
+                self.errors.append("output.csv_dir must be a string path when provided")
+
+        demo_fixture = config.get('demo_fixture')
+        if demo_fixture is not None and not isinstance(demo_fixture, str):
+            self.errors.append("demo_fixture must be a string path")
+
+        allowed_domains = config.get('allowed_domains')
+        if allowed_domains is not None:
+            if not isinstance(allowed_domains, list) or not all(isinstance(d, str) for d in allowed_domains):
+                self.errors.append("allowed_domains must be a list of domain strings")
 
         # URLs must be http(s)
         if 'urls' in config and isinstance(config['urls'], list):

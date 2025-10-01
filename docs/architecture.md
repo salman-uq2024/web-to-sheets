@@ -1,112 +1,112 @@
 # web-to-sheets CLI Architecture
 
 ## Overview
-A Python-based CLI tool for scraping web data and exporting to Google Sheets. Uses minimal libraries: requests, beautifulsoup4, yaml, gspread, oauth2client, sqlite3 (built-in). Optional selenium for JavaScript-heavy sites.
 
-## File Structure
+`web-to-sheets` is a Python CLI that loads YAML site configs, scrapes HTML with
+Requests + BeautifulSoup, dedupes rows with SQLite, and optionally pushes data
+to Google Sheets. A demo mode swaps network calls for a local fixture so the
+tool can be showcased without secrets or live traffic.
+
+## Repository layout
+
 ```
 /
+├── .env.example               # Placeholder env vars
+├── .gitignore
+├── LICENSE
+├── README.md
 ├── docs/
-│   └── architecture.md          # This document
-├── logs/                        # Log files
-├── scripts/                     # Utility scripts (e.g., setup)
-├── sites/                       # YAML config files per site
-│   └── sample.yaml              # Example config
+│   ├── architecture.md        # This document
+│   ├── demo.md                # Demo walkthrough
+│   ├── install.md             # Installation guide
+│   ├── ops.md                 # Operational notes
+│   └── fixtures/              # Offline HTML fixtures (quotes.html)
+├── logs/                      # Log files (gitignored)
+├── pyproject.toml             # Packaging metadata (setuptools)
+├── requirements.txt           # Compatibility shim (-e . + dev deps)
+├── scripts/                   # bootstrap, run_demo, fresh_run helpers
+├── sites/
+│   └── quotes.yaml            # Public demo config
 ├── src/
-│   ├── cli.py                   # Thin CLI entry point
+│   ├── cli.py                 # CLI entry point
+│   ├── __init__.py            # Package metadata (__version__)
 │   ├── core/
-│   │   ├── __init__.py
-│   │   ├── config.py            # YAML loading/validation
-│   │   ├── scraper.py           # Web scraping logic
-│   │   ├── processor.py         # Data processing/dedupe
-│   │   ├── sheets.py            # Google Sheets integration
-│   │   ├── database.py          # SQLite for dedupe/idempotency
-│   │   ├── logger.py            # Logging utilities
-│   │   └── auth.py              # Authentication handling
+│   │   ├── auth.py            # Authentication helpers
+│   │   ├── config.py          # YAML loading + defaults
+│   │   ├── database.py        # Dedupe stores (SQLite + in-memory)
+│   │   ├── logger.py          # File-based logging utility
+│   │   ├── processor.py       # Deduping + CSV export
+│   │   ├── scraper.py         # HTTP/file scraping + pagination
+│   │   └── sheets.py          # Google Sheets integration
 │   └── qa/
-│       └── validator.py         # YAML schema validation
-├── requirements.txt             # Python dependencies
-└── README.md                    # User docs
+│       └── validator.py       # Schema validation
+└── tests/                     # pytest suite (validator, scraper, demo)
 ```
 
-## Key Modules and Classes
+## Core components
 
-### src/core/config.py
-- `ConfigLoader`: Loads and validates YAML against schema.
-- Validates required fields, types, and cross-references (e.g., dedupe_keys exist in selectors).
+### Config loading (`src/core/config.py` + `src/qa/validator.py`)
 
-### src/core/scraper.py
-- `Scraper`: Handles HTTP requests with rate limiting, retries (exponential backoff + jitter for 429/5xx), timeouts.
-- Supports pagination (query_param, next_link).
-- Extracts data using CSS selectors configured per site.
+* `ConfigLoader` reads YAML, validates it, and applies defaults for headers,
+  auth, rate limits, cookies, etc.
+* `SchemaValidator` enforces required fields (`name`, `urls`, `selectors`,
+  `pagination`, `dedupe_keys`, `output`, `min_rows`) and checks optional fields
+  like `demo_fixture`, `allowed_domains`, and `output.csv_dir`.
 
-### src/core/processor.py
-- `DataProcessor`: Dedupes data using configured keys and SQLite tracking.
-- Validates data integrity.
-- Prepares data for CSV and Sheets export.
+### Scraper (`src/core/scraper.py`)
 
-### src/core/sheets.py
-- `SheetsExporter`: Authenticates via service account (if SHEET_ID set), updates sheets idempotently.
-- Appends new rows when Google Sheets credentials are available; otherwise logs and skips export.
+* Uses Requests sessions, configurable timeouts, and simple rate limiting.
+* Supports pagination modes (`query_param`, `next_link`, `none`).
+* In demo mode, accepts `file://` URLs that map to local fixtures and skips
+  network requests altogether.
+* Optional `allowed_domains` guard blocks accidental cross-domain requests.
 
-### src/core/database.py
-- `DedupeDB`: SQLite (or JSONL) wrapper for persistent dedupe tracking across runs.
-- Ensures idempotent runs.
+### Processor (`src/core/processor.py`)
 
-### src/core/logger.py
-- Structured logging to files in logs/, with levels (INFO, ERROR).
+* Dedupes rows based on configured keys using `DedupeDB` (SQLite).
+* Switches to `InMemoryDedupeDB` in demo/tests to avoid filesystem writes.
+* Writes CSV output to a configurable directory (`output.csv_dir`).
+* Emits friendly “No new unique rows” logs when duplicates exhaust results.
 
-### src/core/auth.py
-- `Authenticator`: Applies HTTP basic auth via environment credentials and provides a placeholder for form-based logins.
+### Output integrations
 
-### src/qa/validator.py
-- `SchemaValidator`: Validates required fields, URLs (http(s)), pagination rules, dedupe_keys references.
+* `src/core/sheets.py` appends rows to Google Sheets when `SHEET_ID` and a
+  service account are available; otherwise it logs and skips.
+* Slack webhook alerts (in `src/cli.py`) fire on non-zero exit codes if
+  `SLACK_WEBHOOK_URL` is present.
 
-## Additional Features
-- **CSV Output**: Always write CSV per run.
-- **Sheets Integration**: Conditional on SHEET_ID and service account.
-- **Persistent Dedupe**: Across runs via SQLite.
-- **Exit Codes**: 0 (success), 2 (below min_rows), 3 (config error), 4 (network/site error).
-- **Alert Hook**: Slack webhook on non-zero exit if SLACK_WEBHOOK_URL set.
+## CLI flows
 
-## CLI Subcommands Execution Flow
+* `ws list-sites` – enumerate YAML configs in `sites/` (demo config is tracked,
+  others are gitignored).
+* `ws validate <site>` – run schema validation and exit with code 3 on error.
+* `ws run <site> [--demo]` – scrape & process data. The `--demo` flag rewires
+  URLs to the configured fixture, enforces a conservative rate limit, routes
+  dedupe to memory, and skips Sheets export.
+* `ws version` – print the packaged version (`src.__version__`).
 
-### `python -m src.cli run <site>`
-1. Load config from sites/<site>.yaml
-2. Validate config via validator.py
-3. Initialize DB connection for dedupe
-4. For each URL:
-   - Authenticate if needed
-   - Scrape with rate limiting/retries
-   - Extract data
-5. Process data: dedupe against DB, validate
-6. Export new data to Google Sheets
-7. Log success/failures
-8. Close DB
+## Data flow
 
-### `python -m src.cli validate <site>`
-1. Load sites/<site>.yaml
-2. Run SchemaValidator
-3. Print validation errors or "Valid"
+```
+config YAML -> ConfigLoader -> Scraper -> DataProcessor -> CSV -> SheetsExporter
+                                              \
+                                               -> DedupeDB / InMemoryDedupeDB
+```
 
-### `python -m src.cli list-sites`
-1. List YAML files in sites/
+* Demo mode uses `docs/fixtures/quotes.html` as input and writes
+  `out/quotes.csv` while keeping dedupe ephemeral.
+* Production runs rely on `dedupe.db` to avoid duplicate exports.
 
-### `python -m src.cli version`
-1. Print version string from `src/cli.py`
+## Tooling & automation
 
-## Component Interactions and Data Flow
-- **Config** -> **CLI** -> **Validator** (validate) or **Scraper**
-- **Scraper** -> Raw HTML/JSON -> **Processor** -> Cleaned data -> **DedupeDB** -> **SheetsExporter**
-- **Logger** integrated throughout for errors, progress.
-- **Auth** called by Scraper for secured sites.
+* `pyproject.toml` packages the CLI (entry point: `ws`) and declares core deps.
+* Tests (pytest) cover validation, pagination helpers, and the demo path.
+* GitHub Actions workflow (added alongside the code) runs lint/tests/validation
+  on Python 3.11 and 3.12 without network access.
 
-Features:
-- **Idempotent**: DB prevents re-scraping duplicates.
-- **Dedupe**: Based on configured keys.
-- **Rate Limiting**: Via time.sleep or library.
-- **Retries**: Up to 3 attempts with backoff.
-- **Logging**: File-based, structured.
-- **Multiple URLs**: Iterates over every URL declared in the site config.
+## Extending
 
-Aligns with YAML schema: Enforces required fields, optional defaults.
+1. Add a new `sites/<name>.yaml` config (it will be ignored by git by default).
+2. Drop fixture HTML in `docs/fixtures/` if you want an offline demo variant.
+3. Update tests to cover new selectors/processors where appropriate.
+4. CI will ensure validation + tests keep passing.

@@ -2,6 +2,21 @@ import sqlite3
 import hashlib
 
 
+class InMemoryDedupeDB:
+    """Ephemeral dedupe store for demo mode and tests."""
+
+    def __init__(self):
+        self._seen = {}
+
+    def is_deduped(self, site, dedupe_key):
+        key_hash = hashlib.md5(str(dedupe_key).encode()).hexdigest()
+        return key_hash in self._seen.get(site, set())
+
+    def mark_deduped(self, site, dedupe_key):
+        key_hash = hashlib.md5(str(dedupe_key).encode()).hexdigest()
+        self._seen.setdefault(site, set()).add(key_hash)
+
+
 class DedupeDB:
     def __init__(self, db_path='dedupe.db'):
         self.db_path = db_path

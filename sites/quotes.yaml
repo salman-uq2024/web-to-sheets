@@ -1,6 +1,9 @@
 name: quotes
 urls:
   - https://quotes.toscrape.com/
+rate_limit:
+  rps: 1
+  burst: 2
 selectors:
   item: ".quote"
   text: ".text"
@@ -12,6 +15,10 @@ pagination:
   max_pages: 2
 dedupe_keys:
   - text
+allowed_domains:
+  - quotes.toscrape.com
+demo_fixture: docs/fixtures/quotes.html
 output:
   sheet_tab: Sheet1
+  csv_dir: out
 min_rows: 1
