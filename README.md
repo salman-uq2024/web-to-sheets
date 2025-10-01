@@ -1,6 +1,6 @@
-# Web to Sheets Scraper
+# web-to-sheets
 
-A CLI tool to scrape web data and export to Google Sheets.
+A CLI tool to scrape web data and export results to Google Sheets.
 
 ## Installation
 
@@ -10,11 +10,11 @@ A CLI tool to scrape web data and export to Google Sheets.
 
 ## Usage
 
-- `python -m src.cli run <site>` - Run scraper for site
-- `python -m src.cli validate <site>` - Validate config
-- `python -m src.cli list-sites` - List sites
-- `python -m src.cli version` - Version
+- `python -m src.cli run <site>` - Run scraper for a configured site
+- `python -m src.cli validate <site>` - Validate a site's config file
+- `python -m src.cli list-sites` - List available site configs
+- `python -m src.cli version` - Print CLI version information
 
 ## Config
 
-See `sites/site.sample.yaml` for config format.
+See `sites/sample.yaml` for config format.

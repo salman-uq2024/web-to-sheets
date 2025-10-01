@@ -1,4 +1,4 @@
-# Web→Sheets Scraper CLI Architecture
+# web-to-sheets CLI Architecture
 
 ## Overview
 A Python-based CLI tool for scraping web data and exporting to Google Sheets. Uses minimal libraries: requests, beautifulsoup4, yaml, gspread, oauth2client, sqlite3 (built-in). Optional selenium for JavaScript-heavy sites.
@@ -11,7 +11,7 @@ A Python-based CLI tool for scraping web data and exporting to Google Sheets. Us
 ├── logs/                        # Log files
 ├── scripts/                     # Utility scripts (e.g., setup)
 ├── sites/                       # YAML config files per site
-│   └── site.sample.yaml         # Example config
+│   └── sample.yaml              # Example config
 ├── src/
 │   ├── cli.py                   # Thin CLI entry point
 │   ├── core/
@@ -38,8 +38,7 @@ A Python-based CLI tool for scraping web data and exporting to Google Sheets. Us
 ### src/core/scraper.py
 - `Scraper`: Handles HTTP requests with rate limiting, retries (exponential backoff + jitter for 429/5xx), timeouts.
 - Supports pagination (query_param, next_link).
-- Extracts data using CSS/XPath selectors.
-- Fallbacks: Multiple URLs, selector alternatives.
+- Extracts data using CSS selectors configured per site.
 
 ### src/core/processor.py
 - `DataProcessor`: Dedupes data using configured keys and SQLite tracking.
@@ -48,7 +47,7 @@ A Python-based CLI tool for scraping web data and exporting to Google Sheets. Us
 
 ### src/core/sheets.py
 - `SheetsExporter`: Authenticates via service account (if SHEET_ID set), updates sheets idempotently.
-- Appends new rows, avoids duplicates. Optional if not configured.
+- Appends new rows when Google Sheets credentials are available; otherwise logs and skips export.
 
 ### src/core/database.py
 - `DedupeDB`: SQLite (or JSONL) wrapper for persistent dedupe tracking across runs.
@@ -58,7 +57,7 @@ A Python-based CLI tool for scraping web data and exporting to Google Sheets. Us
 - Structured logging to files in logs/, with levels (INFO, ERROR).
 
 ### src/core/auth.py
-- `Authenticator`: Handles basic auth, form-based login via requests/selenium.
+- `Authenticator`: Applies HTTP basic auth via environment credentials and provides a placeholder for form-based logins.
 
 ### src/qa/validator.py
 - `SchemaValidator`: Validates required fields, URLs (http(s)), pagination rules, dedupe_keys references.
@@ -67,13 +66,12 @@ A Python-based CLI tool for scraping web data and exporting to Google Sheets. Us
 - **CSV Output**: Always write CSV per run.
 - **Sheets Integration**: Conditional on SHEET_ID and service account.
 - **Persistent Dedupe**: Across runs via SQLite.
-- **Exit Codes**: 0 (success), 2 (below min_rows), 3 (config error), 4 (network/site error), 5 (write error).
+- **Exit Codes**: 0 (success), 2 (below min_rows), 3 (config error), 4 (network/site error).
 - **Alert Hook**: Slack webhook on non-zero exit if SLACK_WEBHOOK_URL set.
-- **GitHub Actions**: Matrix workflow for sites, artifact upload (CSV, logs).
 
 ## CLI Subcommands Execution Flow
 
-### `ws run <site>`
+### `python -m src.cli run <site>`
 1. Load config from sites/<site>.yaml
 2. Validate config via validator.py
 3. Initialize DB connection for dedupe
@@ -86,20 +84,20 @@ A Python-based CLI tool for scraping web data and exporting to Google Sheets. Us
 7. Log success/failures
 8. Close DB
 
-### `ws validate <site>`
+### `python -m src.cli validate <site>`
 1. Load sites/<site>.yaml
 2. Run SchemaValidator
 3. Print validation errors or "Valid"
 
-### `ws list-sites`
+### `python -m src.cli list-sites`
 1. List YAML files in sites/
 
-### `ws version`
-1. Print version from __init__.py or cli.py
+### `python -m src.cli version`
+1. Print version string from `src/cli.py`
 
 ## Component Interactions and Data Flow
-- **Config** → **CLI** → **Validator** (validate) or **Scraper**
-- **Scraper** → Raw HTML/JSON → **Processor** → Cleaned data → **DedupeDB** → **SheetsExporter**
+- **Config** -> **CLI** -> **Validator** (validate) or **Scraper**
+- **Scraper** -> Raw HTML/JSON -> **Processor** -> Cleaned data -> **DedupeDB** -> **SheetsExporter**
 - **Logger** integrated throughout for errors, progress.
 - **Auth** called by Scraper for secured sites.
 
@@ -109,6 +107,6 @@ Features:
 - **Rate Limiting**: Via time.sleep or library.
 - **Retries**: Up to 3 attempts with backoff.
 - **Logging**: File-based, structured.
-- **Fallbacks**: Multiple URLs, alternate selectors.
+- **Multiple URLs**: Iterates over every URL declared in the site config.
 
 Aligns with YAML schema: Enforces required fields, optional defaults.

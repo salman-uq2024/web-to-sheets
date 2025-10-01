@@ -12,7 +12,7 @@ from .qa.validator import SchemaValidator
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Web to Sheets Scraper')
+    parser = argparse.ArgumentParser(description='web-to-sheets CLI')
     subparsers = parser.add_subparsers(dest='command')
 
     subparsers.add_parser('version', help='Print version')
@@ -28,7 +28,7 @@ def main():
     args = parser.parse_args()
 
     if args.command == 'version':
-        print('ws 1.0.0')
+        print('web-to-sheets 1.0.0')
         sys.exit(0)
 
     elif args.command == 'list-sites':
@@ -76,7 +76,7 @@ def run_site(site_name):
     if exit_code != 0 and os.getenv('SLACK_WEBHOOK_URL'):
         run_id = 'some_id'  # Generate unique run ID
         requests.post(os.getenv('SLACK_WEBHOOK_URL'), json={
-            'text': f"Scraper failed: site={site_name}, run_id={run_id}, exit_code={exit_code}"
+            'text': f"web-to-sheets run failed: site={site_name}, run_id={run_id}, exit_code={exit_code}"
         })
 
     sys.exit(exit_code)

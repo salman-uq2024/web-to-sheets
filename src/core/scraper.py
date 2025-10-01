@@ -1,7 +1,9 @@
-import requests
-from bs4 import BeautifulSoup
 import time
 import random
+from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
+
+import requests
+from bs4 import BeautifulSoup
 from .auth import Authenticator
 
 
@@ -25,22 +27,43 @@ class Scraper:
 
     def scrape_url(self, url):
         items = []
-        current_url = url
-        page = 0
-        max_pages = self.config['pagination'].get('max_pages', 1)
+        pagination = self.config.get('pagination', {}) or {}
+        pagination_type = pagination.get('type', 'none')
+        max_pages = 1 if pagination_type == 'none' else pagination.get('max_pages')
 
-        while page < max_pages:
+        base_url = url
+        current_url = (
+            self._apply_query_param(base_url, pagination['param'], pagination.get('start', 1))
+            if pagination_type == 'query_param'
+            else base_url
+        )
+        page_number = pagination.get('start', 1) if pagination_type == 'query_param' else None
+        page_count = 0
+
+        while max_pages is None or page_count < max_pages:
             self.rate_limit()
             response = self.fetch(current_url)
             soup = BeautifulSoup(response.text, 'html.parser')
             page_items = self.extract_items(soup)
             items.extend(page_items)
-            page += 1
+            page_count += 1
 
-            next_url = self.get_next_url(soup, current_url, page)
-            if not next_url:
+            if pagination_type == 'none':
                 break
-            current_url = next_url
+
+            if max_pages is not None and page_count >= max_pages:
+                break
+
+            if pagination_type == 'query_param':
+                page_number += 1
+                current_url = self._apply_query_param(base_url, pagination['param'], page_number)
+            elif pagination_type == 'next_link':
+                next_url = self.get_next_url(soup, current_url, pagination)
+                if not next_url:
+                    break
+                current_url = next_url
+            else:
+                break
 
         return items
 
@@ -80,18 +103,24 @@ class Scraper:
                 items.append(item)
         return items
 
-    def get_next_url(self, soup, current_url, page):
-        pagination = self.config['pagination']
-        if pagination['type'] == 'query_param':
-            param = pagination['param']
-            # Simple implementation
-            next_page = page + 1
-            return f"{current_url}?{param}={next_page}"
-        elif pagination['type'] == 'next_link':
-            next_link = soup.select_one(pagination['next_selector'])
-            return next_link['href'] if next_link else None
-        return None
+    def get_next_url(self, soup, current_url, pagination):
+        if pagination.get('type') != 'next_link':
+            return None
+        next_link = soup.select_one(pagination.get('next_selector', ''))
+        if not next_link:
+            return None
+        href = next_link.get('href')
+        if not href:
+            return None
+        return urljoin(current_url, href)
 
     def rate_limit(self):
         rps = self.config['rate_limit']['rps']
         time.sleep(1 / rps)
+
+    def _apply_query_param(self, url, param, value):
+        split_url = urlsplit(url)
+        query_params = dict(parse_qsl(split_url.query, keep_blank_values=True))
+        query_params[param] = str(value)
+        new_query = urlencode(query_params, doseq=True)
+        return urlunsplit((split_url.scheme, split_url.netloc, split_url.path, new_query, split_url.fragment))
