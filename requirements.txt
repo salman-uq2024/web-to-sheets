@@ -2,5 +2,5 @@
 # compatibility with tooling that still expects a requirements.txt. Installing
 # it will pull in the package in editable mode plus test tooling.
 -e .
-pytest>=7.0
-pytest-mock>=3.10
+pytest==8.4.2
+pytest-mock==3.15.1

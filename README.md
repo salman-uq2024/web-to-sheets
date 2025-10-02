@@ -1,79 +1,107 @@
 # web-to-sheets
 
-`web-to-sheets` is a Python CLI that loads site configs, scrapes pages with
-CSS selectors, dedupes results, and optionally exports to Google Sheets. The
-repository ships with an offline-friendly demo so anyone can try it without
-secrets.
+[![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org/)
+[![pytest](https://img.shields.io/badge/pytest-testing-green)](https://pytest.org/)
+[![gspread](https://img.shields.io/badge/gspread-Google%20Sheets-orange)](https://gspread.readthedocs.io/)
 
-## Quickstart
+## Overview
 
-```bash
-./scripts/bootstrap.sh   # create venv and install in editable mode
-source venv/bin/activate
-pytest                   # run unit + demo tests
-python -m src.cli list-sites
-python -m src.cli run quotes --demo
-```
+`web-to-sheets` is a robust Python CLI tool designed for automating web data extraction and seamless integration with Google Sheets. It empowers users to scrape structured data from websites using configurable CSS selectors, handle authentication securely, validate outputs for quality, and log operations for traceability—all while supporting offline demos for easy experimentation. Whether you're building data pipelines for analysis, monitoring, or reporting, this tool streamlines the process from web to spreadsheet with minimal setup.
 
-See `docs/install.md` for more detail.
+Built with a focus on reliability and extensibility, `web-to-sheets` showcases advanced automation techniques, including API interactions with Google Sheets via gspread, ethical web scraping practices, and comprehensive error handling. It's ideal for developers looking to demonstrate skills in CLI design, data processing, and cloud integrations in a real-world project.
 
-## Demo Mode
+## Features
 
-The `quotes` site config is wired to a local HTML fixture. Run it offline via:
+- **Robust Web Scraping**: Extract data using CSS selectors with support for pagination, rate limiting, and domain restrictions to ensure respectful and efficient crawling.
+- **Google Sheets Integration**: Automatically export scraped and deduplicated data to Google Sheets, complete with authentication via service accounts for secure, permission-based access.
+- **YAML Configuration**: Flexible site-specific configs in YAML format, allowing easy customization of URLs, selectors, output formats, and demo fixtures without code changes.
+- **Built-in Validation and Testing**: Includes data validators to enforce quality checks (e.g., minimum rows) and pytest-based unit/integration tests for reliable operation.
+- **Demo Scripts and Offline Mode**: Ships with ready-to-run demo scripts and HTML fixtures for quick testing without internet or API keys—perfect for portfolios or onboarding.
+- **Logging and Deduplication**: Comprehensive logging to track runs and an in-memory or file-based dedupe store to avoid redundant data entries.
 
-```bash
-./scripts/run_demo.sh
-```
+## Quick Start
 
-Output lands in `out/quotes.csv`, and `logs/` records the run. Internally the
-demo uses an in-memory dedupe store, so it never writes `dedupe.db`.
+Getting started is straightforward—even for beginners. Follow these steps from the project root:
 
-## Fresh Run
+1. **Clone and Setup Environment**:
+   ```bash
+   git clone <repo-url> web-to-sheets
+   cd web-to-sheets
+   ./scripts/bootstrap.sh  # Creates a virtual environment and installs dependencies in editable mode
+   source venv/bin/activate  # Activate the venv (on Windows: venv\Scripts\activate)
+   ```
 
-Reset demo artefacts and re-run in one step:
+2. **Install Dependencies** (if not using bootstrap):
+   ```bash
+   pip install -r requirements.txt
+   ```
 
+3. **Run Tests**:
+   ```bash
+   pytest  # Verifies core functionality and demo mode
+   ```
+
+4. **List Available Sites**:
+   ```bash
+   python -m src.cli list-sites  # Or use the 'ws' entrypoint after pip install -e .
+   ```
+
+5. **Run a Demo**:
+   ```bash
+   python -m src.cli run quotes --demo  # Scrapes a local fixture and outputs to CSV
+   # Or use the convenience script:
+   ./scripts/run_demo.sh
+   ```
+
+For a clean reset and fresh run:
 ```bash
 ./scripts/fresh_run.sh
 ```
 
-## CLI Reference
+Detailed installation troubleshooting is in [docs/install.md](docs/install.md). Outputs go to `out/` (CSV/Sheets) and `logs/` for traceability.
 
+## Demo
+
+Experience the tool in action with the built-in `quotes` demo, which uses a local HTML fixture (`docs/fixtures/quotes.html`) to simulate scraping without needing the internet or API credentials.
+
+Run it via:
 ```bash
-ws list-sites
-ws validate <site>
-ws run <site> [--demo]
-ws version
+./scripts/run_demo.sh
 ```
 
-The `ws` entry point is provided by `pip install -e .`; using `python -m
-src.cli` also works.
+This command:
+- Loads the `sites/quotes.yaml` config.
+- "Scrapes" the fixture file.
+- Validates the data (ensuring at least the configured minimum rows).
+- Deduplicates results (in-memory for demo).
+- Exports to `out/quotes.csv` (Sheets export skipped in demo mode).
 
-## Configs
+Check `logs/` for run details. For production, remove `--demo` to target live sites.
 
-- `sites/quotes.yaml` – public demo config (online target with optional
-  pagination).
-- Add private configs as new YAML files under `sites/`. They are ignored by
-  default via `.gitignore`.
+Visualize the workflow with a demo recording (add your own!):
 
-Configs must declare URLs, selectors, pagination, dedupe keys, output, and
-`min_rows`. Optional extras include rate limits, allowed domains, and a
-`demo_fixture` for offline use. See `docs/architecture.md` for module-level
-details.
+![Demo GIF](demo.gif)
 
-## Optional Sheets Export
+*(Placeholder: Insert a GIF or screenshots here showing the CLI output, CSV results, and Sheets integration. Tools like ScreenFlow or OBS Studio work great for capturing.)*
 
-Sheets support activates when both `SHEET_ID` and `service_account.json` are
-present. Copy `.env.example` to `.env`, fill in the placeholders, and provide a
-Google service account file (kept out of source control). Runs without these
-settings skip export gracefully.
+More demo specifics in [docs/demo.md](docs/demo.md).
 
-## Troubleshooting
+## Documentation
 
-- **“Demo fixture not found”** – ensure `docs/fixtures/quotes.html` exists and
-  you are running from the repo root.
-- **Exit code 2 (“Insufficient data”)** – loosen `min_rows` or verify selectors
-  in the site config.
-- **No new rows** – remove `dedupe.db` (or use `fresh_run.sh`) to reset state.
+- **[Architecture Overview](docs/architecture.md)**: Dive into the modular design, including core components like scraper, processor, and Sheets exporter.
+- **[Installation Guide](docs/install.md)**: Step-by-step setup, including Google Sheets auth.
+- **[Demo Instructions](docs/demo.md)**: Offline testing and fixture usage.
+- **[Operations Guide](docs/ops.md)**: Troubleshooting, config tips, and best practices.
 
-Operational tips live in `docs/ops.md`; demo-specific notes are in
-`docs/demo.md`.
+## Skills Demonstrated
+
+This project highlights expertise in:
+- Web scraping with ethical considerations (selectors, robots.txt compliance).
+- Google APIs integration (gspread for Sheets manipulation).
+- CLI development (argparse for user-friendly interfaces).
+- Error handling, logging (structlog), and data validation for production-ready code.
+- Testing (pytest) and automation scripting for maintainable pipelines.
+
+## Ethical Use
+
+For ethical use only; respect website Terms of Service (TOS), robots.txt files, and API rate limits. This tool is not intended for production scraping without explicit permission from site owners. Always prioritize data privacy and compliance with regulations like GDPR.
