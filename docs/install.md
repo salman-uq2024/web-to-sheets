@@ -28,7 +28,7 @@ Use the provided bootstrap script for an automated setup, which creates a virtua
 This script:
 - Creates a `venv` directory with a virtual environment.
 - Upgrades `pip`.
-- Installs the project in editable mode (`-e .[dev]`) including development tools like `pytest`.
+- Installs the project in editable mode (`-e .[dev]`) including development tools like `pytest` and `ruff`.
 
 Alternatively, for manual setup:
 
@@ -46,9 +46,13 @@ Activate the virtual environment (if not already) and check the CLI:
 ```bash
 source venv/bin/activate
 ws --help
+ruff check .
+pytest
 ```
 
-You should see the usage information for the `ws` command.
+- `ws --help` confirms the CLI entry point is installed.
+- `ruff check .` ensures linting is available.
+- `pytest` verifies the offline demo and unit tests.
 
 ## Step 4: Configure Environment Variables (for Google Sheets)
 
@@ -99,13 +103,14 @@ SLACK_WEBHOOK_URL=YOUR_SLACK_WEBHOOK_URL_HERE
 
 ## Step 5: Run Tests
 
-Verify everything works by running the test suite:
+Verify everything works by running the test suite and linting:
 
 ```bash
+ruff check .
 pytest
 ```
 
-This runs unit and integration tests, including the demo mode, without requiring network access.
+These commands run linting and unit/integration tests, including the demo mode, without requiring network access.
 
 ## Troubleshooting
 

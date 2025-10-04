@@ -8,13 +8,13 @@ Built as a portfolio piece, it showcases the ability to create maintainable, tes
 
 ## Key Features and Technical Highlights
 
-- **Ethical Web Scraping**: Uses Requests and BeautifulSoup for respectful data extraction, incorporating rate limiting, domain restrictions, and pagination support to comply with site policies. Configurable via YAML for site-specific selectors and behaviors.
-- **Google Sheets Integration**: Leverages gspread and OAuth2 service accounts for secure, automated appending of scraped data. Handles authentication gracefully, with fallback to CSV exports.
+- **Ethical Web Scraping**: Uses Requests and BeautifulSoup for respectful data extraction, incorporating token-bucket rate limiting, robots.txt enforcement, domain restrictions, and pagination support to comply with site policies. Configurable via YAML for site-specific selectors and behaviors.
+- **Google Sheets Integration**: Leverages gspread service accounts for secure, automated appending of scraped data. Handles authentication gracefully, with fallback to CSV exports.
 - **Modular Architecture**: Clean separation of concerns—config loading, scraping, processing, and output—in dedicated modules (`src/core/*`). Includes SQLite for deduplication and in-memory alternatives for testing/demos.
 - **CLI Design**: Intuitive interface with argparse, supporting commands like `ws run <site> --demo`. Includes validation, listing, and version checks for user-friendly operation.
 - **Offline Demo Mode**: Simulates live scraping with local HTML fixtures (e.g., `docs/fixtures/quotes.html`), enabling fully functional showcases without internet or API keys.
 - **Robust Testing and Quality**: Comprehensive pytest suite covering core paths, with 100% coverage goals. Includes schema validation and error handling for reliable runs.
-- **Logging and Observability**: Structured logs to `logs/` for traceability, with configurable levels and optional Slack notifications on failures.
+- **Logging and Observability**: Python logging writes timestamped files and mirrored console output, with configurable levels and optional Slack notifications on failures.
 
 The data flow—from YAML config to scraped CSV/Sheets—is visualized in [architecture.md](architecture.md) using Mermaid diagrams, highlighting the pipeline's simplicity and extensibility.
 
@@ -26,7 +26,7 @@ This project highlights proficiency in several high-demand areas:
 - **Web Scraping with Ethics**: Implementing selectors, handling dynamic content, and built-in safeguards to respect robots.txt and rate limits—crucial for compliant data acquisition.
 - **API Integrations**: Secure Google Sheets API usage, including service account setup and error-resilient exports.
 - **CLI Development**: Building professional command-line tools with argparse, entry points via setuptools, and user-centric features like help and validation.
-- **Software Best Practices**: Modular design patterns, type hints, docstrings, and CI/CD via GitHub Actions. Full test coverage ensures maintainability.
+- **Software Best Practices**: Modular design patterns, type hints, docstrings, linting with Ruff, and CI/CD via GitHub Actions. Full test coverage ensures maintainability.
 - **Documentation and DX**: Polished Markdown docs (installation, demo, ops, architecture), contributing guidelines, and a ready-to-run demo script for excellent developer experience.
 
 Key achievements include a modular architecture that scales from single-site demos to multi-site pipelines, full test coverage for core functionality, and demo-ready scripts that work offline—making it ideal for interviews or client pitches.

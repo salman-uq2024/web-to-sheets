@@ -1,4 +1,5 @@
 import yaml
+
 from ..qa.validator import SchemaValidator
 
 
@@ -16,7 +17,8 @@ class ConfigLoader:
         # Apply defaults
         config.setdefault('rate_limit', {'rps': 1, 'burst': 2})
         config.setdefault('timeouts', {'connect': 10, 'read': 20})
-        config.setdefault('headers', {})
+        headers = config.setdefault('headers', {})
+        headers.setdefault('User-Agent', 'web-to-sheets/0.1')
         config.setdefault('cookies', {})
         config.setdefault('auth', {'type': 'none'})
 

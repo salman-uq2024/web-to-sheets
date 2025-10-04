@@ -1,8 +1,8 @@
 from pathlib import Path
 
+from src.core.database import InMemoryDedupeDB
 from src.core.processor import DataProcessor
 from src.core.scraper import Scraper
-from src.core.database import InMemoryDedupeDB
 
 
 class StubLogger:
@@ -11,6 +11,9 @@ class StubLogger:
 
     def error(self, *_args, **_kwargs):
         raise AssertionError("Unexpected error log during test")
+
+    def debug(self, *_args, **_kwargs):
+        pass
 
 
 def test_demo_mode_reads_fixture_and_uses_in_memory_db(tmp_path):

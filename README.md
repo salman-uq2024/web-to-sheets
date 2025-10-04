@@ -12,7 +12,8 @@ Built with a focus on reliability and extensibility, `web-to-sheets` showcases a
 
 ## Features
 
-- **Robust Web Scraping**: Extract data using CSS selectors with support for pagination, rate limiting, and domain restrictions to ensure respectful and efficient crawling.
+- **Robust Web Scraping**: Extract data using CSS selectors with support for pagination, token-bucket rate limiting, and domain restrictions to ensure respectful and efficient crawling.
+- **Ethical Guardrails**: Built-in robots.txt awareness and allowed-domain checks prevent accidental scraping of disallowed pages.
 - **Google Sheets Integration**: Automatically export scraped and deduplicated data to Google Sheets, complete with authentication via service accounts for secure, permission-based access.
 - **YAML Configuration**: Flexible site-specific configs in YAML format, allowing easy customization of URLs, selectors, output formats, and demo fixtures without code changes.
 - **Built-in Validation and Testing**: Includes data validators to enforce quality checks (e.g., minimum rows) and pytest-based unit/integration tests for reliable operation.
@@ -36,9 +37,10 @@ Getting started is straightforward—even for beginners. Follow these steps from
    pip install -r requirements.txt
    ```
 
-3. **Run Tests**:
+3. **Run Tests & Linting**:
    ```bash
-   pytest  # Verifies core functionality and demo mode
+   pytest          # Verifies core functionality and demo mode
+   ruff check .    # Ensures code style and import hygiene
    ```
 
 4. **List Available Sites**:
@@ -93,14 +95,18 @@ More demo specifics in [docs/demo.md](docs/demo.md).
 - **[Demo Instructions](docs/demo.md)**: Offline testing and fixture usage.
 - **[Operations Guide](docs/ops.md)**: Troubleshooting, config tips, and best practices.
 
+## Automation
+
+- GitHub Actions [`ci.yml`](.github/workflows/ci.yml) runs Ruff + pytest on Python 3.11 and 3.12.
+- [`demo.yml`](.github/workflows/demo.yml) can be triggered manually (or on main pushes) to execute the offline demo and upload the CSV/log artifacts—handy for sharing results with reviewers without requiring a local setup.
+
 ## Skills Demonstrated
 
 This project highlights expertise in:
-- Web scraping with ethical considerations (selectors, robots.txt compliance).
-- Google APIs integration (gspread for Sheets manipulation).
-- CLI development (argparse for user-friendly interfaces).
-- Error handling, logging (structlog), and data validation for production-ready code.
-- Testing (pytest) and automation scripting for maintainable pipelines.
+- Web scraping with ethical considerations (selectors, robots.txt compliance, domain guards).
+- Google APIs integration (gspread for Sheets manipulation) with service-account flows.
+- CLI development (argparse for user-friendly interfaces) and operational logging via Python's logging module with env-configurable levels.
+- Testing (pytest) and automation scripting for maintainable pipelines, plus lint automation with Ruff.
 
 ## Ethical Use
 

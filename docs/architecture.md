@@ -59,8 +59,8 @@ Configs support demo overrides (e.g., `demo_fixture: docs/fixtures/quotes.html`)
 - Leverages Requests sessions with configurable timeouts, retries, and user-agent rotation.
 - Handles pagination via modes: `query_param` (e.g., `?page=2`), `next_link` (follows `<a rel="next">`), or `none`.
 - In demo mode, `file://` URLs load local fixtures, bypassing network calls.
-- Includes `allowed_domains` to prevent cross-site requests and basic rate limiting (e.g., 1 req/sec).
-- Extracts data using BeautifulSoup CSS selectors, yielding rows as dictionaries.
+- Enforces allowed domains and consults `robots.txt` (unless in demo mode) before fetching, backed by a token-bucket rate limiter (`rps` + `burst`).
+- Extracts data using BeautifulSoup CSS selectors, yielding rows as dictionaries and supporting multi-value selectors (e.g., `::textlist`).
 
 Ethical note: Always check `robots.txt` and site TOS before live use.
 
@@ -72,7 +72,7 @@ Ethical note: Always check `robots.txt` and site TOS before live use.
 
 ### Output Integrations
 
-- **Google Sheets (`src/core/sheets.py`)**: Appends new rows to a specified sheet using gspread and OAuth2 service accounts. Requires `GOOGLE_SHEETS_CREDENTIALS_PATH` and `GOOGLE_SHEETS_ID` in `.env`. Skips in demo mode with a log message.
+- **Google Sheets (`src/core/sheets.py`)**: Appends new rows to a specified sheet using `gspread.service_account`. Requires `GOOGLE_SHEETS_CREDENTIALS_PATH` and `GOOGLE_SHEETS_ID` in `.env` (legacy aliases still supported). Skips in demo mode with a log message.
 - **CSV Export**: Always generates files for traceability.
 - **Notifications (`src/cli.py`)**: Optional Slack webhooks on non-zero exit codes via `SLACK_WEBHOOK_URL`.
 
@@ -104,7 +104,7 @@ graph TD
     D --> E[Process & Deduplicate<br/>src/core/processor.py<br/>SQLite or In-Memory DB]
     E --> F[Export CSV<br/>out/<site>.csv]
     E --> G{Sheets Enabled?}
-    G -->|Yes| H[Append to Google Sheets<br/>src/core/sheets.py<br/>gspread + OAuth2]
+    G -->|Yes| H[Append to Google Sheets<br/>src/core/sheets.py<br/>gspread service account]
     G -->|No/Demo| I[Log Skip]
     F --> J[Log Summary & Exit]
     H --> J

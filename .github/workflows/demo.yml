@@ -1,0 +1,40 @@
+name: Demo Artifact
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - "sites/**"
+      - "docs/fixtures/**"
+      - "src/**"
+      - ".github/workflows/demo.yml"
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+
+      - name: Run demo command
+        run: ws run quotes --demo
+
+      - name: Upload demo artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-run
+          path: |
+            out/quotes.csv
+            logs/*.log
+          if-no-files-found: error

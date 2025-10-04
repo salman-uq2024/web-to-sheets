@@ -1,5 +1,5 @@
-import sqlite3
 import hashlib
+import sqlite3
 
 
 class InMemoryDedupeDB:

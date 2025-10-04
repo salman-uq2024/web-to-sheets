@@ -9,6 +9,7 @@ selectors:
   text: ".text"
   author: ".author"
   link: ".author + a::attr(href)"
+  tags: ".tags .tag::textlist"
 pagination:
   type: next_link
   next_selector: ".next a"
@@ -21,4 +22,9 @@ demo_fixture: docs/fixtures/quotes.html
 output:
   sheet_tab: Sheet1
   csv_dir: out
+  columns:
+    - text
+    - author
+    - tags
+    - link
 min_rows: 1

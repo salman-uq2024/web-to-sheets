@@ -1,7 +1,7 @@
-from urllib.parse import urlparse, parse_qs
+from types import SimpleNamespace
+from urllib.parse import parse_qs, urlparse
 
 from src.core.scraper import Scraper
-from types import SimpleNamespace
 
 
 class StubLogger:
@@ -9,6 +9,9 @@ class StubLogger:
         pass
 
     def error(self, *_args, **_kwargs):
+        pass
+
+    def debug(self, *_args, **_kwargs):
         pass
 
 
@@ -19,11 +22,12 @@ def build_base_config():
         "pagination": {"type": "query_param", "param": "page", "start": 1, "max_pages": 3},
         "rate_limit": {"rps": 1, "burst": 1},
         "timeouts": {"connect": 1, "read": 1},
-        "headers": {},
+        "headers": {"User-Agent": "test-agent"},
         "dedupe_keys": ["title"],
         "output": {"sheet_tab": "Sheet1"},
         "min_rows": 1,
         "allowed_domains": ["example.com"],
+        "demo_mode": True,
     }
 
 
@@ -64,3 +68,48 @@ def test_scraper_pagination_query_param(mocker):
     assert mock_fetch.call_count == 2
     mock_fetch.assert_any_call("https://example.com/list?page=1")
     mock_fetch.assert_any_call("https://example.com/list?page=2")
+
+
+def test_extract_items_textlist():
+    config = build_base_config()
+    config["selectors"] = {
+        "item": ".quote",
+        "text": ".text",
+        "tags": ".tag::textlist",
+    }
+
+    html = """
+    <div class="quote">
+        <span class="text">Example quote</span>
+        <a class="tag">alpha</a>
+        <a class="tag">beta</a>
+    </div>
+    """
+
+    scraper = Scraper(config, StubLogger())
+    from bs4 import BeautifulSoup
+
+    parsed = BeautifulSoup(html, "html.parser")
+    items = scraper.extract_items(parsed)
+
+    assert items == [{"text": "Example quote", "tags": "alpha, beta"}]
+
+
+def test_is_url_disallowed_by_allowed_domains():
+    config = build_base_config()
+    scraper = Scraper(config, StubLogger())
+
+    assert not scraper._is_url_allowed("https://another.com/page")
+
+
+def test_is_url_disallowed_by_robots(mocker):
+    config = build_base_config()
+    config["demo_mode"] = False
+    scraper = Scraper(config, StubLogger())
+
+    parser_mock = mocker.Mock()
+    parser_mock.can_fetch.return_value = False
+    scraper._robot_parsers["example.com"] = parser_mock
+
+    assert not scraper._is_url_allowed("https://example.com/blocked")
+    parser_mock.can_fetch.assert_called_once()

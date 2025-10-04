@@ -45,15 +45,29 @@ class DataProcessor:
     def write_csv(self, data):
         if not data:
             return
+
         filename = f"{self.config['name']}.csv"
-        output_dir = self.config.get('output', {}).get('csv_dir')
+        output_cfg = self.config.get('output', {})
+        output_dir = output_cfg.get('csv_dir')
+        columns = output_cfg.get('columns')
+
+        if columns is not None:
+            if not isinstance(columns, list) or not all(isinstance(col, str) for col in columns):
+                raise ValueError('output.columns must be a list of column names when provided')
+        else:
+            columns = list(data[0].keys())
+
         if output_dir:
             file_path = Path(output_dir) / filename
             file_path.parent.mkdir(parents=True, exist_ok=True)
         else:
             file_path = Path(filename)
         with open(file_path, 'w', newline='') as f:
-            writer = csv.DictWriter(f, fieldnames=data[0].keys())
+            writer = csv.DictWriter(f, fieldnames=columns)
             writer.writeheader()
-            writer.writerows(data)
+            formatted_rows = [
+                {column: item.get(column, '') for column in columns}
+                for item in data
+            ]
+            writer.writerows(formatted_rows)
         self.logger.info(f"CSV written: {file_path}")

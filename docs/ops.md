@@ -24,12 +24,12 @@ Use this before demos or when troubleshooting data inconsistencies.
 
 ## Logging
 
-Logging is central to observability, capturing config loads, scraping progress, errors, and export confirmations. The tool uses a structured logger (`src/core/logger.py`) that writes to timestamped files in `logs/`.
+Logging is central to observability, capturing config loads, scraping progress, errors, and export confirmations. The tool uses the standard library `logging` module (`src/core/logger.py`) to write timestamped files to `logs/` and mirror the same output to stdout.
 
 ### Configuration
 - Set `LOG_LEVEL` in `.env` (default: `INFO`): Options include `DEBUG` (verbose, for troubleshooting), `INFO` (standard operations), `WARNING` (non-critical issues), `ERROR` (failures only).
-- Logs are rotated automatically with filenames like `web-to-sheets-YYYYMMDD-HHMMSS.log`.
-- Console output mirrors file logs at the set level for interactive runs.
+- Each run emits to a fresh file named like `logs/20241003_120000.log`.
+- Console output mirrors file logs at the set level for interactive runs, making demos easy to follow.
 
 ### Viewing Logs
 Tail the latest log for real-time monitoring:
@@ -45,13 +45,13 @@ tail -n 50 $(ls -1t logs/*.log | head -n1)
 ```
 
 **Example Log Entries:**
-- `INFO - Config loaded: quotes (validated: True)`
-- `INFO - Scraping URL: http://quotes.toscrape.com/page/1 (status: 200)`
-- `WARNING - Rate limit applied: Sleeping 1s`
-- `ERROR - Selector 'invalid' failed: NoSuchElement`
-- `INFO - CSV written: out/quotes.csv (10 rows, 10 unique)`
+- `2024-10-03 12:01:05,120 - INFO - Configuration loaded: site=quotes`
+- `2024-10-03 12:01:05,873 - INFO - Scraped 10 rows from https://quotes.toscrape.com/`
+- `2024-10-03 12:01:06,002 - DEBUG - Rate limit reached; sleeping for 1.00s`
+- `2024-10-03 12:01:06,410 - ERROR - Blocked by robots.txt: https://example.com/admin`
+- `2024-10-03 12:01:06,512 - INFO - CSV written: out/quotes.csv`
 
-Logs include timestamps, levels, and context (e.g., site name, URL). For production, integrate with tools like ELK Stack by parsing JSON-formatted logs (enable via logger config).
+Logs include timestamps, levels, and context (e.g., site name, URL). For production, ship them to tools like ELK/Splunk or wrap the logger with JSON formatting if needed.
 
 **Best Practices:**
 - Always check logs after runs for anomalies.
@@ -77,9 +77,9 @@ Standardized codes indicate the failure point:
 
 ### Common Errors and Resolutions
 - **Validation Fail (3)**: Run `ws validate <site>` standalone. Fix YAML (e.g., add missing `selectors`).
-- **Scrape Fail (4)**: Check logs for HTTP errors. Verify `allowed_domains`, rate limits, or use `--demo`. For auth sites, ensure credentials in config/env.
+- **Scrape Fail (4)**: Check logs for HTTP errors or robots.txt denials. Verify `allowed_domains`, token-bucket limits, or use `--demo`. For auth sites, ensure credentials in config/env.
 - **Data Shortfall (2)**: Inspect CSV/logs for partial extracts. Adjust `min_rows` or selectors; test with fixture.
-- **Sheets Auth (1/4)**: Confirm `.env` paths/IDs; re-share sheet with service account. Logs detail OAuth errors.
+- **Sheets Auth (1/4)**: Confirm `.env` paths/IDs; re-share the sheet with the service account email. Logs will surface Google API errors.
 - **General (1)**: Often env-related (e.g., missing deps). Run `pip install -e .[dev]` and check Python version.
 
 All errors log stack traces at `DEBUG` level. For debugging, set `LOG_LEVEL=DEBUG` and re-run.
@@ -100,7 +100,7 @@ While designed for single-site automation, `web-to-sheets` can scale for multi-s
 - **Cron Jobs**: Schedule daily runs (e.g., `0 2 * * * cd /path/to/project && source venv/bin/activate && ws run quotes`).
   - Add `fresh_run.sh` for periodic resets if dedupe grows large.
   - Redirect logs: `>> logs/cron-$(date +%Y%m%d).log 2>&1`.
-- **CI/CD Integration**: GitHub Actions (in `.github/`) already runs tests; extend for scheduled scrapes via workflows.
+- **CI/CD Integration**: GitHub Actions (in `.github/`) already runs Ruff linting and pytest; use the dedicated `Demo Artifact` workflow to publish sample CSV/log outputs or extend for scheduled scrapes.
 - **Containerization**: Dockerize for deployment (add Dockerfile with venv setup). Run in Kubernetes for high availability, mounting `sites/` and `logs/` as volumes.
 
 ### Performance and Reliability

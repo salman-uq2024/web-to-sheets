@@ -1,6 +1,6 @@
 # Demo Mode
 
-The `web-to-sheets` project includes a fully offline demo mode to showcase its functionality without requiring internet access, API credentials, or live web scraping. This mode uses a local HTML fixture to simulate data extraction, making it ideal for presentations, testing, or portfolio demonstrations.
+The `web-to-sheets` project includes a fully offline demo mode to showcase its functionality without requiring internet access, API credentials, or live web scraping. This mode uses a local HTML fixture to simulate data extraction, making it ideal for presentations, testing, or portfolio demonstrations. Prefer a turnkey artifact? Trigger the `Demo Artifact` GitHub workflow to generate the CSV/log bundle directly from CI.
 
 Demo mode activates via the `--demo` flag in the CLI, which:
 - Rewires configured URLs to point to local fixture files (e.g., `file://docs/fixtures/quotes.html`).
@@ -24,22 +24,22 @@ The project provides a convenience script for quick execution. This script assum
 3. Runs the CLI command: `ws run quotes --demo`.
    - Loads the configuration from `sites/quotes.yaml`.
    - Validates the config using the built-in schema checker.
-   - "Scrapes" the local fixture, processes the data (deduplication, CSV export).
+   - "Scrapes" the local fixture, applies selectors (including multi-value joins), and processes the data (deduplication, CSV export).
    - Logs the entire process to `logs/` with timestamps.
 
 The script uses `set -euo pipefail` for robust error handling, ensuring it fails fast on issues.
 
 **Expected Output:**
-- Console logs: Messages like "Config loaded: quotes", "Scraping URL: file://docs/fixtures/quotes.html", "Found 10 quotes", "CSV written: out/quotes.csv", "Demo mode: Skipping Sheets export".
-- Generated file: `out/quotes.csv` with columns for `quote`, `author`, and `tags` (comma-separated).
-- Log file: A new entry in `logs/` (e.g., `logs/web-to-sheets-YYYYMMDD-HHMMSS.log`) detailing the run, including any validation results.
+- Console logs: Messages like "Scraping file://docs/fixtures/quotes.html", "Extracted 10 rows", "CSV written: out/quotes.csv", "Demo mode active: Skipping Sheets export". Set `LOG_LEVEL=DEBUG` to surface rate-limit sleeps and robots.txt checks.
+- Generated file: `out/quotes.csv` with columns for `text`, `author`, `tags`, and `link` (comma-joined tags).
+- Log file: A new entry in `logs/` (e.g., `logs/20241003_120000.log`) detailing the run, including any validation results.
 - Exit code: 0 on success (data processed) or non-zero if validation fails (e.g., fewer than `min_rows`).
 
 Example CSV snippet (from fixture):
 ```
-quote,author,tags
-“The world as we have created it is a process of our thinking. It cannot be changed without changing our thinking.”,Albert Einstein,change,deep-thoughts,thinking,world
-“It is our choices, Harry, that show what we truly are, far more than our abilities.”,J.K. Rowling,abilities,choices
+text,author,tags,link
+“The world as we have created it is a process of our thinking. It cannot be changed without changing our thinking.”,Albert Einstein,"change, deep-thoughts, thinking, world",https://quotes.toscrape.com/author/Albert-Einstein
+“It is our choices, Harry, that show what we truly are, far more than our abilities.”,J.K. Rowling,"abilities, choices",https://quotes.toscrape.com/author/J-K-Rowling
 ...
 ```
 
@@ -82,7 +82,7 @@ cat docs/fixtures/quotes.html  # View raw HTML
 
 ## Expected Outputs and Validation
 
-- **CSV Export**: `out/quotes.csv` with at least 10 rows (one per quote). Columns match the `output` config in `sites/quotes.yaml` (e.g., `quote`, `author`, `tags` joined by commas).
+- **CSV Export**: `out/quotes.csv` with at least 10 rows (one per quote). Columns match the `output` config in `sites/quotes.yaml` (e.g., `text`, `author`, `tags`, `link`). Tags are comma-joined via the `::textlist` selector suffix.
 - **Logs**: Detailed entries in `logs/`, including:
   - Config loading and validation success.
   - Scraping summary (e.g., "Extracted 10 rows from 1 page").

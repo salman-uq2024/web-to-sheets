@@ -1,5 +1,6 @@
-import yaml
 import os
+
+import yaml
 
 
 class SchemaValidator:
@@ -69,6 +70,13 @@ class SchemaValidator:
             csv_dir = config['output'].get('csv_dir')
             if csv_dir is not None and not isinstance(csv_dir, str):
                 self.errors.append("output.csv_dir must be a string path when provided")
+            sheet_tab = config['output'].get('sheet_tab')
+            if not sheet_tab or not isinstance(sheet_tab, str):
+                self.errors.append("output.sheet_tab must be a non-empty string")
+            columns = config['output'].get('columns')
+            if columns is not None:
+                if not isinstance(columns, list) or not all(isinstance(column, str) for column in columns):
+                    self.errors.append("output.columns must be a list of strings when provided")
 
         demo_fixture = config.get('demo_fixture')
         if demo_fixture is not None and not isinstance(demo_fixture, str):

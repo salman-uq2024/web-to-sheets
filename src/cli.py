@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 import argparse
-import sys
 import os
+import sys
+import uuid
 from pathlib import Path
 
 import requests
+
 from . import __version__
 from .core.config import ConfigLoader
-from .core.scraper import Scraper
-from .core.processor import DataProcessor
-from .core.sheets import SheetsExporter
 from .core.logger import Logger
+from .core.processor import DataProcessor
+from .core.scraper import Scraper
+from .core.sheets import SheetsExporter
 from .qa.validator import SchemaValidator
 
 
@@ -56,9 +58,11 @@ def main():
 def run_site(site_name, demo_mode=False):
     logger = Logger()
     config_path = f'sites/{site_name}.yaml'
+    run_id = uuid.uuid4().hex
     try:
         loader = ConfigLoader()
         config = loader.load(config_path)
+        logger.info(f"Configuration loaded: site={site_name}")
         if demo_mode:
             config['demo_mode'] = True
             fixture = config.get('demo_fixture', 'docs/fixtures/quotes.html')
@@ -73,6 +77,10 @@ def run_site(site_name, demo_mode=False):
             config.setdefault('allowed_domains', ['quotes.toscrape.com'])
             config.setdefault('output', {})
             config['output'].setdefault('csv_dir', 'out')
+            logger.info(f"Demo mode active; using fixture {fixture_path}")
+        else:
+            start_urls = ', '.join(config.get('urls', []))
+            logger.info(f"Live mode active; starting URLs={start_urls}")
         scraper = Scraper(config, logger)
         data = scraper.scrape(demo_mode=demo_mode)
         processor = DataProcessor(config, logger,
@@ -95,10 +103,16 @@ def run_site(site_name, demo_mode=False):
 
     # Alert hook
     if exit_code != 0 and os.getenv('SLACK_WEBHOOK_URL'):
-        run_id = 'some_id'  # Generate unique run ID
-        requests.post(os.getenv('SLACK_WEBHOOK_URL'), json={
-            'text': f"web-to-sheets run failed: site={site_name}, run_id={run_id}, exit_code={exit_code}"
-        })
+        try:
+            requests.post(
+                os.getenv('SLACK_WEBHOOK_URL'),
+                json={
+                    'text': f"web-to-sheets run failed: site={site_name}, run_id={run_id}, exit_code={exit_code}"
+                },
+                timeout=5,
+            )
+        except requests.RequestException as exc:
+            logger.error(f"Failed to send Slack notification: {exc}")
 
     sys.exit(exit_code)
 
