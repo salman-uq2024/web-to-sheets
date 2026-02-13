@@ -1,4 +1,3 @@
-
 import yaml
 
 from src.qa.validator import SchemaValidator
@@ -44,8 +43,8 @@ def test_validator_accepts_optional_demo_fields(tmp_path):
     assert validator.is_valid(str(config_path))
 
 
-def test_validator_flags_missing_sheet_tab(tmp_path):
-    config_path = tmp_path / "invalid_output.yaml"
+def test_validator_allows_csv_only_output(tmp_path):
+    config_path = tmp_path / "csv_only.yaml"
     config_path.write_text(yaml.dump({
         "name": "example",
         "urls": ["https://example.com"],
@@ -57,6 +56,39 @@ def test_validator_flags_missing_sheet_tab(tmp_path):
     }))
 
     validator = SchemaValidator()
+    assert validator.is_valid(str(config_path))
+
+
+def test_validator_accepts_file_urls(tmp_path):
+    config_path = tmp_path / "file_url.yaml"
+    config_path.write_text(yaml.dump({
+        "name": "example",
+        "urls": ["file:///tmp/fixture.html"],
+        "selectors": {"item": ".row", "id": ".row-id"},
+        "pagination": {"type": "none"},
+        "dedupe_keys": ["id"],
+        "output": {"csv_dir": "out"},
+        "min_rows": 0,
+    }))
+
+    validator = SchemaValidator()
+    assert validator.is_valid(str(config_path))
+
+
+def test_validator_rejects_invalid_min_rows_and_dedupe_keys(tmp_path):
+    config_path = tmp_path / "bad_ranges.yaml"
+    config_path.write_text(yaml.dump({
+        "name": "example",
+        "urls": ["https://example.com"],
+        "selectors": {"item": ".row", "id": ".row-id"},
+        "pagination": {"type": "none"},
+        "dedupe_keys": [],
+        "output": {"csv_dir": "out"},
+        "min_rows": -1,
+    }))
+
+    validator = SchemaValidator()
     errors = validator.validate(str(config_path))
 
-    assert any("output.sheet_tab" in error for error in errors)
+    assert any("dedupe_keys must be a non-empty list" in error for error in errors)
+    assert any("min_rows must be a non-negative integer" in error for error in errors)

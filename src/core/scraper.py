@@ -20,6 +20,7 @@ class Scraper:
         self.auth.authenticate(config.get('auth', {}))
         self.allowed_domains = set(config.get('allowed_domains', []))
         self.demo_mode = config.get('demo_mode', False)
+        self.respect_robots = config.get("respect_robots", True)
         self._robot_parsers = {}
         rate_limit_cfg = config.get('rate_limit', {}) or {}
         self._rps = max(float(rate_limit_cfg.get('rps', 1)), 0.0)
@@ -33,6 +34,7 @@ class Scraper:
     def scrape(self, demo_mode=False):
         self.demo_mode = demo_mode or self.demo_mode
         data = []
+        failures = []
         for url in self.config['urls']:
             try:
                 if not self._is_url_allowed(url):
@@ -41,6 +43,12 @@ class Scraper:
                 data.extend(items)
             except Exception as e:
                 self.logger.error(f"Failed to scrape {url}: {e}")
+                failures.append((url, str(e)))
+
+        if failures and not data:
+            failed_urls = ", ".join(url for url, _ in failures)
+            raise RuntimeError(f"All URLs failed to scrape: {failed_urls}")
+
         return data
 
     def scrape_url(self, url):
@@ -193,11 +201,11 @@ class Scraper:
         if parsed.scheme not in ('http', 'https'):
             return True
 
-        if self.allowed_domains and parsed.netloc not in self.allowed_domains:
+        if self.allowed_domains and not self._is_allowed_domain(parsed.netloc):
             self.logger.error(f"URL not in allowed domains: {url}")
             return False
 
-        if self.demo_mode:
+        if self.demo_mode or not self.respect_robots:
             return True
 
         parser = self._get_robot_parser(parsed)
@@ -230,3 +238,11 @@ class Scraper:
             self.logger.info(f'Failed to fetch robots.txt for {netloc}; assuming allowed')
             self._robot_parsers[netloc] = None
             return None
+
+    def _is_allowed_domain(self, request_netloc: str) -> bool:
+        request_host = request_netloc.split(":", 1)[0].lower()
+        for allowed_domain in self.allowed_domains:
+            allowed_host = allowed_domain.split(":", 1)[0].lower()
+            if request_host == allowed_host or request_host.endswith(f".{allowed_host}"):
+                return True
+        return False

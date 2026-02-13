@@ -13,7 +13,7 @@ To start fresh—e.g., for testing or after debugging—use the provided script 
 **What it does:**
 - Removes `dedupe.db` (SQLite deduplication database) to reset unique row tracking.
 - Deletes existing CSV outputs in `out/` to avoid confusion with prior runs.
-- Clears old log files in `logs/` (keeps the most recent for reference).
+- Clears old log files in `logs/`.
 - Activates the virtual environment and runs the demo (`ws run quotes --demo`).
 
 This ensures a clean slate without reinstalling dependencies. For manual resets:
@@ -55,7 +55,7 @@ Logs include timestamps, levels, and context (e.g., site name, URL). For product
 
 **Best Practices:**
 - Always check logs after runs for anomalies.
-- In demo mode, logs confirm "No network calls made" and "In-memory dedupe used".
+- In demo mode, logs should show the local fixture path and CSV export completion.
 - Gitignores `logs/` to protect sensitive data (e.g., URLs, auth hints).
 
 ## Error Handling
@@ -95,6 +95,7 @@ While designed for single-site automation, `web-to-sheets` can scale for multi-s
   ```
 - Parallel: Use `&` for background (monitor with `wait`), but respect rate limits to avoid bans.
 - Config: Place multiple YAMLs in `sites/`; use `ws list-sites` to enumerate.
+- Dedupe DB location: Override persistent state path with `DEDUPE_DB_PATH=/path/to/dedupe.db` when needed.
 
 ### Scheduling and Automation
 - **Cron Jobs**: Schedule daily runs (e.g., `0 2 * * * cd /path/to/project && source venv/bin/activate && ws run quotes`).

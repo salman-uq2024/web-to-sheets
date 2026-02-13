@@ -2,7 +2,7 @@
 
 Thank you for your interest in contributing to `web-to-sheets`! This project welcomes contributions that improve its functionality, documentation, or usability. Whether it's fixing bugs, adding features, enhancing tests, or refining docs, your help is appreciated.
 
-To get started, follow the guidelines below. All contributors must adhere to the project's [code of conduct](CODE_OF_CONDUCT.md) (if added) and respect ethical scraping practices.
+To get started, follow the guidelines below and respect ethical scraping practices.
 
 ## Development Setup
 
@@ -141,10 +141,6 @@ To add support for new sites or features:
 5. **CI Updates**: If adding deps, update `pyproject.toml` and test matrix in `.github/workflows/`.
 
 Contributions adding new integrations (e.g., other APIs) are especially welcome—propose in an issue first.
-
-## Code of Conduct
-
-By participating, you agree to our [code of conduct](CODE_OF_CONDUCT.md). Harassment-free environment for all.
 
 Questions? Open an issue or discuss in PR comments. Happy contributing!
 

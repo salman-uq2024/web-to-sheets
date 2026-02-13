@@ -1,4 +1,5 @@
 import csv
+import os
 from pathlib import Path
 
 from .database import DedupeDB, InMemoryDedupeDB
@@ -14,13 +15,14 @@ class DataProcessor:
         elif demo_mode:
             self.db = InMemoryDedupeDB()
         else:
-            self.db = DedupeDB()
+            db_path = config.get("dedupe_db_path") or os.getenv("DEDUPE_DB_PATH", "dedupe.db")
+            self.db = DedupeDB(db_path=db_path)
 
     def process(self, data):
         deduped_data = []
         pending_marks = []
         for item in data:
-            dedupe_key = tuple(item[k] for k in self.config['dedupe_keys'])
+            dedupe_key = self._build_dedupe_key(item)
             if not self.db.is_deduped(self.config['name'], dedupe_key):
                 deduped_data.append(item)
                 pending_marks.append(dedupe_key)
@@ -62,12 +64,21 @@ class DataProcessor:
             file_path.parent.mkdir(parents=True, exist_ok=True)
         else:
             file_path = Path(filename)
-        with open(file_path, 'w', newline='') as f:
+        with open(file_path, "w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=columns)
             writer.writeheader()
             formatted_rows = [
-                {column: item.get(column, '') for column in columns}
+                {column: item.get(column, "") for column in columns}
                 for item in data
             ]
             writer.writerows(formatted_rows)
         self.logger.info(f"CSV written: {file_path}")
+
+    def _build_dedupe_key(self, item: dict) -> tuple:
+        missing_keys = [key for key in self.config["dedupe_keys"] if key not in item]
+        if missing_keys:
+            raise ValueError(
+                f"Scraped item missing dedupe key(s): {', '.join(missing_keys)}. "
+                "Check selectors and dedupe_keys configuration."
+            )
+        return tuple(item[key] for key in self.config["dedupe_keys"])

@@ -89,7 +89,7 @@ cat docs/fixtures/quotes.html  # View raw HTML
   - Deduplication (e.g., "All 10 rows unique").
   - Export confirmation.
 - **No Sheets Update**: In demo mode, logs "Demo mode active: Skipping Sheets export".
-- **Validation**: Ensures `min_rows: 5` is met; fails with exit code 2 if not.
+- **Validation**: Ensures `min_rows` in the site config is met; fails with exit code 2 if not.
 
 If the CSV has fewer rows than expected, check logs for selector mismatches or config issues.
 

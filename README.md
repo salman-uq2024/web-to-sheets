@@ -1,6 +1,6 @@
 # web-to-sheets
 
-[![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
 [![pytest](https://img.shields.io/badge/pytest-testing-green)](https://pytest.org/)
 [![gspread](https://img.shields.io/badge/gspread-Google%20Sheets-orange)](https://gspread.readthedocs.io/)
 
@@ -16,6 +16,7 @@ Built with a focus on reliability and extensibility, `web-to-sheets` showcases a
 - **Ethical Guardrails**: Built-in robots.txt awareness and allowed-domain checks prevent accidental scraping of disallowed pages.
 - **Google Sheets Integration**: Automatically export scraped and deduplicated data to Google Sheets, complete with authentication via service accounts for secure, permission-based access.
 - **YAML Configuration**: Flexible site-specific configs in YAML format, allowing easy customization of URLs, selectors, output formats, and demo fixtures without code changes.
+- **Improved CLI UX**: `ws validate-all`, clearer exit behavior, and path resolution that works even when the command is run outside the repo root.
 - **Built-in Validation and Testing**: Includes data validators to enforce quality checks (e.g., minimum rows) and pytest-based unit/integration tests for reliable operation.
 - **Demo Scripts and Offline Mode**: Ships with ready-to-run demo scripts and HTML fixtures for quick testing without internet or API keys—perfect for portfolios or onboarding.
 - **Logging and Deduplication**: Comprehensive logging to track runs and an in-memory or file-based dedupe store to avoid redundant data entries.
@@ -48,7 +49,12 @@ Getting started is straightforward—even for beginners. Follow these steps from
    python -m src.cli list-sites  # Or use the 'ws' entrypoint after pip install -e .
    ```
 
-5. **Run a Demo**:
+5. **Validate All Configs**:
+   ```bash
+   python -m src.cli validate-all
+   ```
+
+6. **Run a Demo**:
    ```bash
    python -m src.cli run quotes --demo  # Scrapes a local fixture and outputs to CSV
    # Or use the convenience script:

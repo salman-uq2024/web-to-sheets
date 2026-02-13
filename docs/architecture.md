@@ -51,15 +51,17 @@ Dependencies are declared in [`pyproject.toml`](pyproject.toml) (e.g., requests,
 
 - `ConfigLoader`: Parses YAML files from `sites/`, applies defaults for headers, auth, rate limits, cookies, and pagination.
 - `SchemaValidator`: Enforces structure with required fields (`name`, `urls`, `selectors`, `pagination`, `dedupe_keys`, `output`, `min_rows`) and optionals like `demo_fixture`, `allowed_domains`, `output.csv_dir`. Exits with code 3 on validation errors.
+- `SchemaValidator`: Enforces structure with required fields (`name`, `urls`, `selectors`, `pagination`, `dedupe_keys`, `output`, `min_rows`) and optionals like `demo_fixture`, `allowed_domains`, `output.csv_dir`, and `respect_robots`. Exits with code 3 on validation errors.
 
 Configs support demo overrides (e.g., `demo_fixture: docs/fixtures/quotes.html`) for offline testing.
 
 ### Web Scraper (`src/core/scraper.py`)
 
-- Leverages Requests sessions with configurable timeouts, retries, and user-agent rotation.
+- Leverages Requests sessions with configurable timeouts and retries.
 - Handles pagination via modes: `query_param` (e.g., `?page=2`), `next_link` (follows `<a rel="next">`), or `none`.
 - In demo mode, `file://` URLs load local fixtures, bypassing network calls.
 - Enforces allowed domains and consults `robots.txt` (unless in demo mode) before fetching, backed by a token-bucket rate limiter (`rps` + `burst`).
+- `respect_robots: false` can be set per-site for controlled internal use cases where robots checks are intentionally bypassed.
 - Extracts data using BeautifulSoup CSS selectors, yielding rows as dictionaries and supporting multi-value selectors (e.g., `::textlist`).
 
 Ethical note: Always check `robots.txt` and site TOS before live use.
@@ -87,6 +89,7 @@ The CLI (`ws`) provides intuitive commands:
 
 - `ws list-sites`: Lists YAML configs in `sites/` (only `quotes` is version-controlled).
 - `ws validate <site>`: Validates a config; exits 3 on failure.
+- `ws validate-all`: Validates every YAML config found in `sites/`.
 - `ws run <site> [--demo]`: Full pipeline: load → scrape → process → export. `--demo` enables offline mode.
 - `ws version`: Displays package version from `src/__init__.py`.
 
@@ -124,7 +127,7 @@ graph TD
 - **Packaging**: `pyproject.toml` enables `pip install -e .` for the `ws` entrypoint.
 - **Testing**: Pytest covers validation, scraping helpers, and demo flows (`tests/test_*.py`). Run with `pytest` (no network required).
 - **Linting**: Ruff for style checks (integrated in dev deps).
-- **CI/CD**: GitHub Actions (in `.github/`) run tests/lint on Python 3.10–3.12.
+- **CI/CD**: GitHub Actions (in `.github/`) run tests/lint on Python 3.11 and 3.12.
 - **Scripts**: `bootstrap.sh` for setup, `run_demo.sh` for quick runs, `fresh_run.sh` for resets.
 
 ## Extending the Project

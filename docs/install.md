@@ -46,11 +46,13 @@ Activate the virtual environment (if not already) and check the CLI:
 ```bash
 source venv/bin/activate
 ws --help
+ws validate-all
 ruff check .
 pytest
 ```
 
 - `ws --help` confirms the CLI entry point is installed.
+- `ws validate-all` confirms site configs are discoverable and valid.
 - `ruff check .` ensures linting is available.
 - `pytest` verifies the offline demo and unit tests.
 

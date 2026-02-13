@@ -1,6 +1,8 @@
 from types import SimpleNamespace
 from urllib.parse import parse_qs, urlparse
 
+import pytest
+
 from src.core.scraper import Scraper
 
 
@@ -102,6 +104,14 @@ def test_is_url_disallowed_by_allowed_domains():
     assert not scraper._is_url_allowed("https://another.com/page")
 
 
+def test_is_url_allowed_for_subdomain():
+    config = build_base_config()
+    config["allowed_domains"] = ["example.com"]
+    scraper = Scraper(config, StubLogger())
+
+    assert scraper._is_url_allowed("https://api.example.com/page")
+
+
 def test_is_url_disallowed_by_robots(mocker):
     config = build_base_config()
     config["demo_mode"] = False
@@ -113,3 +123,13 @@ def test_is_url_disallowed_by_robots(mocker):
 
     assert not scraper._is_url_allowed("https://example.com/blocked")
     parser_mock.can_fetch.assert_called_once()
+
+
+def test_scrape_raises_when_all_urls_fail(mocker):
+    config = build_base_config()
+    scraper = Scraper(config, StubLogger())
+    mocker.patch.object(scraper, "_is_url_allowed", return_value=True)
+    mocker.patch.object(scraper, "scrape_url", side_effect=RuntimeError("boom"))
+
+    with pytest.raises(RuntimeError, match="All URLs failed to scrape"):
+        scraper.scrape()
