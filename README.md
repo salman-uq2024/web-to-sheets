@@ -4,11 +4,22 @@
 [![pytest](https://img.shields.io/badge/pytest-testing-green)](https://pytest.org/)
 [![gspread](https://img.shields.io/badge/gspread-Google%20Sheets-orange)](https://gspread.readthedocs.io/)
 
+## Recruiter Snapshot
+
+- Demonstrates practical automation and integration capability, not just scripting.
+- Shows Python-based data extraction, validation, logging, and Google Sheets integration.
+- Relevant to business systems, workflow automation, integration, reporting, and data pipeline roles.
+- Includes testing, linting, CI, and demo-friendly offline execution for easier portfolio review.
+
 ## Overview
 
 `web-to-sheets` is a robust Python CLI tool designed for automating web data extraction and seamless integration with Google Sheets. It empowers users to scrape structured data from websites using configurable CSS selectors, handle authentication securely, validate outputs for quality, and log operations for traceability—all while supporting offline demos for easy experimentation. Whether you're building data pipelines for analysis, monitoring, or reporting, this tool streamlines the process from web to spreadsheet with minimal setup.
 
 Built with a focus on reliability and extensibility, `web-to-sheets` showcases advanced automation techniques, including API interactions with Google Sheets via gspread, ethical web scraping practices, and comprehensive error handling. It's ideal for developers looking to demonstrate skills in CLI design, data processing, and cloud integrations in a real-world project.
+
+## Why This Is Relevant For Automation / Integration Roles
+
+This project demonstrates practical automation and integration work: extracting structured data, validating outputs, logging activity, and exporting results into Google Sheets for downstream reporting or operational use. It is relevant to business systems, workflow automation, data pipeline, and integration-focused roles where reliability, guardrails, and reproducibility matter more than one-off scripts.
 
 ## Features
 
@@ -93,6 +104,10 @@ Visualize the workflow with a demo recording (add your own!):
 *(Placeholder: Insert a GIF or screenshots here showing the CLI output, CSV results, and Sheets integration. Tools like ScreenFlow or OBS Studio work great for capturing.)*
 
 More demo specifics in [docs/demo.md](docs/demo.md).
+
+## Portfolio Framing
+
+This repository is best understood as a practical automation and integration portfolio project rather than a generic scraper. It shows how structured data can be collected, validated, processed, and delivered into a business-friendly destination system with attention to guardrails, reproducibility, and operational clarity.
 
 ## Documentation
 
