@@ -18,3 +18,10 @@ build/
 
 sites/*.yaml
 !sites/quotes.yaml
+
+# local env and generated artifacts
+venv/
+.pytest_cache/
+.ruff_cache/
+logs/
+out/
