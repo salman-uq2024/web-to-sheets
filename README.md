@@ -15,6 +15,8 @@
 
 `web-to-sheets` is a robust Python CLI tool designed for automating web data extraction and seamless integration with Google Sheets. It empowers users to scrape structured data from websites using configurable CSS selectors, handle authentication securely, validate outputs for quality, and log operations for traceability—all while supporting offline demos for easy experimentation. Whether you're building data pipelines for analysis, monitoring, or reporting, this tool streamlines the process from web to spreadsheet with minimal setup.
 
+[Case study: architecture, trade-offs, measured validation, and limitations](docs/case-study.md)
+
 Built with a focus on reliability and extensibility, `web-to-sheets` showcases advanced automation techniques, including API interactions with Google Sheets via gspread, ethical web scraping practices, and comprehensive error handling. It's ideal for developers looking to demonstrate skills in CLI design, data processing, and cloud integrations in a real-world project.
 
 ## Why This Is Relevant For Automation / Integration Roles
@@ -38,7 +40,7 @@ Getting started is straightforward—even for beginners. Follow these steps from
 
 1. **Clone and Setup Environment**:
    ```bash
-   git clone <repo-url> web-to-sheets
+   git clone https://github.com/salman-chowdhury/web-to-sheets.git
    cd web-to-sheets
    ./scripts/bootstrap.sh  # Creates a virtual environment and installs dependencies in editable mode
    source venv/bin/activate  # Activate the venv (on Windows: venv\Scripts\activate)
@@ -97,7 +99,7 @@ This command:
 
 Check `logs/` for run details. For production, remove `--demo` to target live sites.
 
-Visualize the workflow with a demo recording (add your own!):
+See the [offline demo guide](docs/demo.md) and [measured case study](docs/case-study.md).
 
 ![Demo GIF](demo.gif)
 
