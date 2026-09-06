@@ -146,11 +146,13 @@ def run_site(site_name: str, demo_mode: bool = False, sites_dir: Path = SITES_DI
         scraper = Scraper(config, logger)
         data = scraper.scrape(demo_mode=demo_mode)
         processor = DataProcessor(config, logger, demo_mode=demo_mode)
-        processed_data = processor.process(data)
+        processed_data = processor.process(data, commit=demo_mode)
 
         if not demo_mode and processed_data:
             exporter = SheetsExporter(config, logger)
-            exporter.export(processed_data)
+            if not exporter.export(processed_data):
+                raise RuntimeError('Sheets delivery was not confirmed; rows remain eligible for retry')
+            processor.mark_delivered(processed_data)
 
         exit_code = EXIT_OK
     except ValueError as exc:

@@ -2,7 +2,7 @@ import csv
 import os
 from pathlib import Path
 
-from .database import DedupeDB, InMemoryDedupeDB
+from .database import DedupeDB, InMemoryDedupeDB, _hash_dedupe_key
 
 
 class DataProcessor:
@@ -18,14 +18,15 @@ class DataProcessor:
             db_path = config.get("dedupe_db_path") or os.getenv("DEDUPE_DB_PATH", "dedupe.db")
             self.db = DedupeDB(db_path=db_path)
 
-    def process(self, data):
+    def process(self, data, *, commit=True):
         deduped_data = []
-        pending_marks = []
+        pending_marks = set()
         for item in data:
             dedupe_key = self._build_dedupe_key(item)
-            if not self.db.is_deduped(self.config['name'], dedupe_key):
+            key_hash = _hash_dedupe_key(dedupe_key)
+            if key_hash not in pending_marks and not self.db.is_deduped(self.config['name'], dedupe_key):
                 deduped_data.append(item)
-                pending_marks.append(dedupe_key)
+                pending_marks.add(key_hash)
 
         if len(deduped_data) < self.config['min_rows']:
             if pending_marks:
@@ -38,11 +39,15 @@ class DataProcessor:
 
             raise ValueError(f"Insufficient data: {len(deduped_data)} < {self.config['min_rows']}")
 
-        for dedupe_key in pending_marks:
-            self.db.mark_deduped(self.config['name'], dedupe_key)
-
         self.write_csv(deduped_data)
+        if commit:
+            self.mark_delivered(deduped_data)
         return deduped_data
+
+    def mark_delivered(self, data):
+        """Checkpoint only after the requested output destination acknowledges success."""
+        for item in data:
+            self.db.mark_deduped(self.config['name'], self._build_dedupe_key(item))
 
     def write_csv(self, data):
         if not data:

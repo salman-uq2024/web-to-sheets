@@ -1,136 +1,58 @@
-# web-to-sheets
+# Web to Sheets
 
-[![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
-[![pytest](https://img.shields.io/badge/pytest-testing-green)](https://pytest.org/)
-[![gspread](https://img.shields.io/badge/gspread-Google%20Sheets-orange)](https://gspread.readthedocs.io/)
+[![CI](https://github.com/salman-chowdhury/web-to-sheets/actions/workflows/ci.yml/badge.svg)](https://github.com/salman-chowdhury/web-to-sheets/actions/workflows/ci.yml)
 
-## Recruiter Snapshot
+A Python CLI for moving permitted web data into CSV and Google Sheets. YAML configuration describes the source, selectors, validation threshold and output columns. An offline fixture makes the extraction workflow reviewable without credentials.
 
-- Demonstrates practical automation and integration capability, not just scripting.
-- Shows Python-based data extraction, validation, logging, and Google Sheets integration.
-- Relevant to business systems, workflow automation, integration, reporting, and data pipeline roles.
-- Includes testing, linting, CI, and demo-friendly offline execution for easier portfolio review.
+**Start here:** [implementation case study](docs/case-study.md) · [support runbook](docs/ops.md) · [tests](tests)
 
-## Overview
+## Review in five minutes
 
-`web-to-sheets` is a robust Python CLI tool designed for automating web data extraction and seamless integration with Google Sheets. It empowers users to scrape structured data from websites using configurable CSS selectors, handle authentication securely, validate outputs for quality, and log operations for traceability—all while supporting offline demos for easy experimentation. Whether you're building data pipelines for analysis, monitoring, or reporting, this tool streamlines the process from web to spreadsheet with minimal setup.
+Requires Python 3.10+.
 
-[Case study: architecture, trade-offs, measured validation, and limitations](docs/case-study.md)
-
-Built with a focus on reliability and extensibility, `web-to-sheets` showcases advanced automation techniques, including API interactions with Google Sheets via gspread, ethical web scraping practices, and comprehensive error handling. It's ideal for developers looking to demonstrate skills in CLI design, data processing, and cloud integrations in a real-world project.
-
-## Why This Is Relevant For Automation / Integration Roles
-
-This project demonstrates practical automation and integration work: extracting structured data, validating outputs, logging activity, and exporting results into Google Sheets for downstream reporting or operational use. It is relevant to business systems, workflow automation, data pipeline, and integration-focused roles where reliability, guardrails, and reproducibility matter more than one-off scripts.
-
-## Features
-
-- **Robust Web Scraping**: Extract data using CSS selectors with support for pagination, token-bucket rate limiting, and domain restrictions to ensure respectful and efficient crawling.
-- **Ethical Guardrails**: Built-in robots.txt awareness and allowed-domain checks prevent accidental scraping of disallowed pages.
-- **Google Sheets Integration**: Automatically export scraped and deduplicated data to Google Sheets, complete with authentication via service accounts for secure, permission-based access.
-- **YAML Configuration**: Flexible site-specific configs in YAML format, allowing easy customization of URLs, selectors, output formats, and demo fixtures without code changes.
-- **Improved CLI UX**: `ws validate-all`, clearer exit behavior, and path resolution that works even when the command is run outside the repo root.
-- **Built-in Validation and Testing**: Includes data validators to enforce quality checks (e.g., minimum rows) and pytest-based unit/integration tests for reliable operation.
-- **Demo Scripts and Offline Mode**: Ships with ready-to-run demo scripts and HTML fixtures for quick testing without internet or API keys—perfect for portfolios or onboarding.
-- **Logging and Deduplication**: Comprehensive logging to track runs and an in-memory or file-based dedupe store to avoid redundant data entries.
-
-## Quick Start
-
-Getting started is straightforward—even for beginners. Follow these steps from the project root:
-
-1. **Clone and Setup Environment**:
-   ```bash
-   git clone https://github.com/salman-chowdhury/web-to-sheets.git
-   cd web-to-sheets
-   ./scripts/bootstrap.sh  # Creates a virtual environment and installs dependencies in editable mode
-   source venv/bin/activate  # Activate the venv (on Windows: venv\Scripts\activate)
-   ```
-
-2. **Install Dependencies** (if not using bootstrap):
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Run Tests & Linting**:
-   ```bash
-   pytest          # Verifies core functionality and demo mode
-   ruff check .    # Ensures code style and import hygiene
-   ```
-
-4. **List Available Sites**:
-   ```bash
-   python -m src.cli list-sites  # Or use the 'ws' entrypoint after pip install -e .
-   ```
-
-5. **Validate All Configs**:
-   ```bash
-   python -m src.cli validate-all
-   ```
-
-6. **Run a Demo**:
-   ```bash
-   python -m src.cli run quotes --demo  # Scrapes a local fixture and outputs to CSV
-   # Or use the convenience script:
-   ./scripts/run_demo.sh
-   ```
-
-For a clean reset and fresh run:
 ```bash
-./scripts/fresh_run.sh
+git clone https://github.com/salman-chowdhury/web-to-sheets.git
+cd web-to-sheets
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e '.[dev]'
+ws validate-all
+ws run quotes --demo
+python -m pytest -q
+python -m ruff check .
 ```
 
-Detailed installation troubleshooting is in [docs/install.md](docs/install.md). Outputs go to `out/` (CSV/Sheets) and `logs/` for traceability.
+Windows activation: `.venv\Scripts\activate`. The demo reads the committed HTML fixture and writes **10 records** to `out/quotes.csv`; it does not call Google Sheets. Inspect the CSV and timestamped files in `logs/`.
 
-## Demo
+## Engineering evidence
 
-Experience the tool in action with the built-in `quotes` demo, which uses a local HTML fixture (`docs/fixtures/quotes.html`) to simulate scraping without needing the internet or API credentials.
+| Concern | Implementation / evidence |
+| --- | --- |
+| Reusable integration | [CLI](src/cli.py), [YAML configuration](sites/quotes.yaml), [Sheets adapter](src/core/sheets.py) |
+| Input quality | [Configuration validator](src/qa/validator.py), minimum-row checks and explicit exit codes |
+| Duplicate prevention | [Processor](src/core/processor.py) deduplicates within a batch and across successful runs using SQLite |
+| Failure recovery | Rows are checkpointed only after CSV writing and confirmed Sheets delivery in live mode; failed delivery exits nonzero and leaves rows retryable |
+| Source controls | Allowed domains, robots.txt handling, pagination limits and token-bucket throttling |
+| Verification | pytest regression tests, Ruff and GitHub Actions |
 
-Run it via:
-```bash
-./scripts/run_demo.sh
-```
+## Live integration
 
-This command:
-- Loads the `sites/quotes.yaml` config.
-- "Scrapes" the fixture file.
-- Validates the data (ensuring at least the configured minimum rows).
-- Deduplicates results (in-memory for demo).
-- Exports to `out/quotes.csv` (Sheets export skipped in demo mode).
+Use only sources you are permitted to collect. Set `GOOGLE_SHEETS_ID` and `GOOGLE_SHEETS_CREDENTIALS_PATH` in your environment or local `.env`; grant the service account access to the intended sheet. Configure `output.sheet_tab` in the site YAML, then run `ws run quotes`.
 
-Check `logs/` for run details. For production, remove `--demo` to target live sites.
+Live runs require a confirmed Sheets delivery before committing deduplication state. Missing configuration or failed delivery returns exit code `4`; the extracted CSV may still exist. See the [runbook](docs/ops.md) before retrying an ambiguous network failure.
 
-See the [offline demo guide](docs/demo.md) and [measured case study](docs/case-study.md).
+## Validation and limits
 
-![Demo GIF](demo.gif)
+On 5 September 2026, **29 pytest tests and Ruff passed locally**. Tests mock Google Sheets; this is not a live-account integration certification.
 
-*(Placeholder: Insert a GIF or screenshots here showing the CLI output, CSV results, and Sheets integration. Tools like ScreenFlow or OBS Studio work great for capturing.)*
-
-More demo specifics in [docs/demo.md](docs/demo.md).
-
-## Portfolio Framing
-
-This repository is best understood as a practical automation and integration portfolio project rather than a generic scraper. It shows how structured data can be collected, validated, processed, and delivered into a business-friendly destination system with attention to guardrails, reproducibility, and operational clarity.
+- A lost response after a successful append can still cause duplicates on retry. This is **at-least-once delivery**, not exactly-once processing.
+- CSV output is a snapshot of the latest newly extracted batch, not a historical warehouse.
+- Parallel workers sharing deduplication state are not coordinated.
+- The scraper does not render JavaScript applications; changing page layouts can invalidate selectors.
+- Logs are timestamped text, not a distributed tracing system.
 
 ## Documentation
 
-- **[Architecture Overview](docs/architecture.md)**: Dive into the modular design, including core components like scraper, processor, and Sheets exporter.
-- **[Installation Guide](docs/install.md)**: Step-by-step setup, including Google Sheets auth.
-- **[Demo Instructions](docs/demo.md)**: Offline testing and fixture usage.
-- **[Operations Guide](docs/ops.md)**: Troubleshooting, config tips, and best practices.
+[Installation](docs/install.md) · [Demo](docs/demo.md) · [Architecture](docs/architecture.md) · [Operations](docs/ops.md)
 
-## Automation
-
-- GitHub Actions [`ci.yml`](.github/workflows/ci.yml) runs Ruff + pytest on Python 3.11 and 3.12.
-- [`demo.yml`](.github/workflows/demo.yml) can be triggered manually (or on main pushes) to execute the offline demo and upload the CSV/log artifacts—handy for sharing results with reviewers without requiring a local setup.
-
-## Skills Demonstrated
-
-This project highlights expertise in:
-- Web scraping with ethical considerations (selectors, robots.txt compliance, domain guards).
-- Google APIs integration (gspread for Sheets manipulation) with service-account flows.
-- CLI development (argparse for user-friendly interfaces) and operational logging via Python's logging module with env-configurable levels.
-- Testing (pytest) and automation scripting for maintainable pipelines, plus lint automation with Ruff.
-
-## Ethical Use
-
-For ethical use only; respect website Terms of Service (TOS), robots.txt files, and API rate limits. This tool is not intended for production scraping without explicit permission from site owners. Always prioritize data privacy and compliance with regulations like GDPR.
+MIT licence — see [LICENSE](LICENSE).

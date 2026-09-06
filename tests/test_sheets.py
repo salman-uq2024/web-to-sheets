@@ -76,3 +76,16 @@ def test_exporter_uses_columns_order(monkeypatch, tmp_path, mocker):
     exporter.export([{'alpha': '1', 'beta': '2'}])
 
     worksheet_mock.append_rows.assert_called_once_with([["2", "1"]])
+
+
+@pytest.mark.parametrize("failure_stage", ["open", "append"])
+def test_delivery_failure_is_reported(failure_stage, mocker):
+    exporter = SheetsExporter({"output": {"sheet_tab": "Sheet1"}}, StubLogger())
+    exporter.sheet_id = "synthetic-sheet"
+    exporter.gc = mocker.Mock()
+    if failure_stage == "open":
+        exporter.gc.open_by_key.side_effect = RuntimeError("unavailable")
+    else:
+        worksheet = exporter.gc.open_by_key.return_value.worksheet.return_value
+        worksheet.append_rows.side_effect = RuntimeError("unavailable")
+    assert exporter.export([{"id": "1"}]) is False

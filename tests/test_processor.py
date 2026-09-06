@@ -44,3 +44,37 @@ def test_processor_uses_env_dedupe_db_path(tmp_path, monkeypatch):
     another_processor = DataProcessor(config, StubLogger(), demo_mode=False)
     processed_again = another_processor.process([{"id": "row-1"}])
     assert processed_again == []
+
+
+def test_duplicate_rows_in_one_batch_are_exported_once(tmp_path):
+    processor = DataProcessor(build_config(tmp_path), StubLogger(), demo_mode=True)
+    assert processor.process([{"id": "1"}, {"id": "1"}]) == [{"id": "1"}]
+
+
+def test_list_valued_dedupe_keys_remain_supported(tmp_path):
+    processor = DataProcessor(build_config(tmp_path), StubLogger(), demo_mode=True)
+    rows = [{"id": ["one", "two"]}, {"id": ["one", "two"]}]
+    assert processor.process(rows) == rows[:1]
+
+
+def test_csv_failure_does_not_consume_rows(tmp_path, monkeypatch):
+    processor = DataProcessor(build_config(tmp_path), StubLogger(), demo_mode=True)
+    original_write = processor.write_csv
+
+    def fail(_data):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(processor, "write_csv", fail)
+    with pytest.raises(OSError):
+        processor.process([{"id": "1"}])
+    monkeypatch.setattr(processor, "write_csv", original_write)
+    assert processor.process([{"id": "1"}]) == [{"id": "1"}]
+
+
+def test_deferred_delivery_remains_retryable_until_acknowledged(tmp_path):
+    processor = DataProcessor(build_config(tmp_path), StubLogger(), demo_mode=True)
+    rows = [{"id": "1"}]
+    assert processor.process(rows, commit=False) == rows
+    assert processor.process(rows, commit=False) == rows
+    processor.mark_delivered(rows)
+    assert processor.process(rows, commit=False) == []

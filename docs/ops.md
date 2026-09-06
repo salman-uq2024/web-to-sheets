@@ -1,125 +1,56 @@
-# Operations Guide
+# Support and recovery runbook
 
-This document covers day-to-day operational aspects of `web-to-sheets`, including resetting the environment, managing logs, handling errors via exit codes, and considerations for scaling the tool in production-like scenarios. It assumes basic familiarity with the CLI and setup (see [install.md](install.md)).
+This runbook describes the current CLI. Use synthetic fixtures first; do not include credentials or scraped personal data in tickets.
 
-## Resetting the Environment
+## Establish the failure boundary
 
-To start fresh—e.g., for testing or after debugging—use the provided script to clear persistent state:
+1. Record the command, working directory, Python version, site name, timestamp and exit code.
+2. Run `ws validate <site>` to separate configuration faults from network or destination faults.
+3. Run `ws run quotes --demo` to check the local extraction/CSV path without external access.
+4. Read the corresponding timestamped text log in `logs/`. `LOG_LEVEL=DEBUG` enables debug messages where implemented; stack traces are not guaranteed.
+5. Check whether a CSV was written and whether the intended destination actually received the rows.
 
-```bash
-./scripts/fresh_run.sh
-```
+## Exit codes
 
-**What it does:**
-- Removes `dedupe.db` (SQLite deduplication database) to reset unique row tracking.
-- Deletes existing CSV outputs in `out/` to avoid confusion with prior runs.
-- Clears old log files in `logs/`.
-- Activates the virtual environment and runs the demo (`ws run quotes --demo`).
+| Code | Current meaning | Next action |
+| --- | --- | --- |
+| 0 | Success, or no new unique rows | Compare expected row count with CSV/logs and destination |
+| 1 | No command or no site configurations | Use `ws --help` and `ws list-sites` |
+| 2 | Insufficient extracted rows; argparse also uses 2 for invalid syntax | Check command syntax, fixture/selectors and `min_rows` |
+| 3 | Configuration or value validation failure | Run `ws validate <site>` and repair the named field |
+| 4 | Runtime/network failure or unconfirmed Sheets delivery | Isolate source, filesystem, credentials, worksheet and API availability |
 
-This ensures a clean slate without reinstalling dependencies. For manual resets:
-- `rm -f dedupe.db out/*.csv logs/*.log` (be cautious; backs up if needed).
-- Then run `ws run <site> [--demo]`.
+## Common incidents
 
-Use this before demos or when troubleshooting data inconsistencies.
+| Symptom | Diagnosis | Recovery |
+| --- | --- | --- |
+| No new rows | Records may already be in `dedupe.db` | Verify the destination first; a repeat successful run should not resend them |
+| CSV exists but Sheets is empty | Local processing succeeded; remote delivery did not | Check sheet ID, service-account access, credentials path and tab name; fix then retry |
+| Authentication/permission failure | Client initialization or sheet access failed | Correct access for the existing service account; keep credentials out of the repo |
+| Too few rows | Source layout changed, selector mismatch, or partial retrieval | Compare permitted source HTML with the YAML; reproduce with a local fixture before changing thresholds |
+| Output cannot be written | Directory permissions or full disk | Restore writable storage; failed CSV writes do not checkpoint the rows |
+| Source rejects collection | Domain/robots policy or remote service refusal | Verify permission and collection policy; do not bypass the restriction |
 
-## Logging
+## Delivery semantics
 
-Logging is central to observability, capturing config loads, scraping progress, errors, and export confirmations. The tool uses the standard library `logging` module (`src/core/logger.py`) to write timestamped files to `logs/` and mirror the same output to stdout.
+Live mode extracts, validates, deduplicates and writes CSV, then attempts the Sheets append. Deduplication is committed only after the adapter confirms success. Unconfirmed delivery exits `4` and preserves retry eligibility. Within-batch duplicates are removed before minimum-row validation.
 
-### Configuration
-- Set `LOG_LEVEL` in `.env` (default: `INFO`): Options include `DEBUG` (verbose, for troubleshooting), `INFO` (standard operations), `WARNING` (non-critical issues), `ERROR` (failures only).
-- Each run emits to a fresh file named like `logs/20241003_120000.log`.
-- Console output mirrors file logs at the set level for interactive runs, making demos easy to follow.
+A timeout can be ambiguous: Google may have accepted the append even if the client never received confirmation. Check the sheet before retrying. A crash between append and checkpoint has the same risk. The system does not promise exactly-once delivery or safe concurrent writers; a destination-side idempotency key/upsert would be a future improvement.
 
-### Viewing Logs
-Tail the latest log for real-time monitoring:
+Demo mode uses an in-memory deduplication store and never exports to Sheets. It can be repeated without deleting live state.
 
-```bash
-tail -f $(ls -1t logs/*.log | head -n1)
-```
+## Preserve evidence before resetting
 
-Or view the last 50 lines of the most recent:
+Keep the relevant log, CSV and a backup of the SQLite state when investigating an incident. Do not delete `dedupe.db` simply to make a run succeed: that can resend historical rows. `DEDUPE_DB_PATH` selects an isolated state file for a deliberately separate run. Relative CSV/log/state paths resolve from the working directory.
 
-```bash
-tail -n 50 $(ls -1t logs/*.log | head -n1)
-```
+## Optional notifications
 
-**Example Log Entries:**
-- `2024-10-03 12:01:05,120 - INFO - Configuration loaded: site=quotes`
-- `2024-10-03 12:01:05,873 - INFO - Scraped 10 rows from https://quotes.toscrape.com/`
-- `2024-10-03 12:01:06,002 - DEBUG - Rate limit reached; sleeping for 1.00s`
-- `2024-10-03 12:01:06,410 - ERROR - Blocked by robots.txt: https://example.com/admin`
-- `2024-10-03 12:01:06,512 - INFO - CSV written: out/quotes.csv`
+If configured, `SLACK_WEBHOOK_URL` receives a failure summary with site name, run ID and exit code. It does not receive a log excerpt. Leave it unset for offline review and tests.
 
-Logs include timestamps, levels, and context (e.g., site name, URL). For production, ship them to tools like ELK/Splunk or wrap the logger with JSON formatting if needed.
+## Regression evidence
 
-**Best Practices:**
-- Always check logs after runs for anomalies.
-- In demo mode, logs should show the local fixture path and CSV export completion.
-- Gitignores `logs/` to protect sensitive data (e.g., URLs, auth hints).
+- [Processor tests](../tests/test_processor.py): duplicate batch, failed CSV write, deferred delivery.
+- [CLI tests](../tests/test_cli.py): failed upload, successful retry, then no resend.
+- [Sheets tests](../tests/test_sheets.py): failed sheet open and append return failure.
 
-## Error Handling
-
-The tool employs robust error handling to fail gracefully, providing actionable feedback via logs and exit codes. Errors are caught at each stage (config, scrape, process, export) and bubbled up without crashing the CLI.
-
-### Exit Codes
-Standardized codes indicate the failure point:
-
-- `0`: Success (data processed/exported, or no new rows in dedupe mode).
-- `1`: General runtime error (e.g., file I/O issues, invalid arguments).
-- `2`: Insufficient data (fewer rows than `min_rows` in config; common in failed scrapes).
-- `3`: Configuration validation error (missing required fields in YAML).
-- `4`: Network or site-specific error (e.g., 404, timeout, blocked by domain guard).
-
-**Handling in Scripts:**
-- Check `$?` after CLI runs: `if [ $? -ne 0 ]; then echo "Failed"; fi`.
-- Non-zero codes trigger optional Slack alerts if `SLACK_WEBHOOK_URL` is set in `.env` (sends summary with exit code and log snippet).
-
-### Common Errors and Resolutions
-- **Validation Fail (3)**: Run `ws validate <site>` standalone. Fix YAML (e.g., add missing `selectors`).
-- **Scrape Fail (4)**: Check logs for HTTP errors or robots.txt denials. Verify `allowed_domains`, token-bucket limits, or use `--demo`. For auth sites, ensure credentials in config/env.
-- **Data Shortfall (2)**: Inspect CSV/logs for partial extracts. Adjust `min_rows` or selectors; test with fixture.
-- **Sheets Auth (1/4)**: Confirm `.env` paths/IDs; re-share the sheet with the service account email. Logs will surface Google API errors.
-- **General (1)**: Often env-related (e.g., missing deps). Run `pip install -e .[dev]` and check Python version.
-
-All errors log stack traces at `DEBUG` level. For debugging, set `LOG_LEVEL=DEBUG` and re-run.
-
-## Scaling Considerations
-
-While designed for single-site automation, `web-to-sheets` can scale for multi-site or scheduled runs with minimal tweaks.
-
-### Multi-Site Operations
-- Run sequentially: Loop over sites in a bash script, e.g.:
-  ```bash
-  for site in quotes news; do ws run $site; done
-  ```
-- Parallel: Use `&` for background (monitor with `wait`), but respect rate limits to avoid bans.
-- Config: Place multiple YAMLs in `sites/`; use `ws list-sites` to enumerate.
-- Dedupe DB location: Override persistent state path with `DEDUPE_DB_PATH=/path/to/dedupe.db` when needed.
-
-### Scheduling and Automation
-- **Cron Jobs**: Schedule daily runs (e.g., `0 2 * * * cd /path/to/project && source venv/bin/activate && ws run quotes`).
-  - Add `fresh_run.sh` for periodic resets if dedupe grows large.
-  - Redirect logs: `>> logs/cron-$(date +%Y%m%d).log 2>&1`.
-- **CI/CD Integration**: GitHub Actions (in `.github/`) already runs Ruff linting and pytest; use the dedicated `Demo Artifact` workflow to publish sample CSV/log outputs or extend for scheduled scrapes.
-- **Containerization**: Dockerize for deployment (add Dockerfile with venv setup). Run in Kubernetes for high availability, mounting `sites/` and `logs/` as volumes.
-
-### Performance and Reliability
-- **Rate Limiting**: Built-in (configurable in YAML); for heavy use, add proxies or distributed scraping (extend `scraper.py`).
-- **Deduplication**: SQLite handles thousands of rows; for millions, migrate to PostgreSQL (swap in `database.py`).
-- **Monitoring**: Integrate with Prometheus (expose metrics via logger) or send logs to centralized systems.
-- **Resource Usage**: Low footprint (single-threaded); scale vertically (more CPU for parallel) or horizontally (multiple instances per site).
-- **Ethical Scaling**: Always throttle requests (e.g., <1/sec per domain). Monitor for site changes via tests.
-
-For large-scale pipelines, consider wrapping in Airflow or Luigi for orchestration.
-
-## Troubleshooting Tips
-- No logs generated? Ensure `LOG_LEVEL` is set and permissions allow writes to `logs/`.
-- Frequent timeouts? Increase `timeout` in YAML or use VPN/proxies.
-- Scaling issues? Profile with `cProfile` on `cli.py` for bottlenecks.
-
-Refer to [architecture.md](architecture.md) for component details and [demo.md](demo.md) for testing ops changes offline.
-
----
-
-*Last updated: October 2024*
+Local verification on 5 September 2026: 29 tests passed; Ruff passed. Remote Google access was mocked.

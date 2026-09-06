@@ -41,35 +41,36 @@ class SheetsExporter:
             self.logger.error(f'Failed to initialise Google Sheets client: {exc}')
             self.gc = None
 
-    def export(self, data: Iterable[dict]):
+    def export(self, data: Iterable[dict]) -> bool:
         if not self.gc or not self.sheet_id:
             self.logger.info('Sheets exporter not configured, skipping')
-            return
+            return False
 
         sheet_tab = self.config.get('output', {}).get('sheet_tab')
         if not sheet_tab:
             self.logger.error('output.sheet_tab missing; unable to export to Google Sheets')
-            return
+            return False
         columns: Optional[List[str]] = self.config.get('output', {}).get('columns')
 
         try:
             sheet = self.gc.open_by_key(self.sheet_id).worksheet(sheet_tab)
         except Exception as exc:  # pragma: no cover - requires live Sheets
             self.logger.error(f'Failed to open Google Sheet: {exc}')
-            return
+            return False
 
         rows = self._prepare_rows(data, columns)
         if not rows:
             self.logger.info('No rows to export to Google Sheets')
-            return
+            return True
 
         try:
             sheet.append_rows(rows)
         except Exception as exc:  # pragma: no cover - requires live Sheets
             self.logger.error(f'Failed to append rows to Google Sheets: {exc}')
-            return
+            return False
 
         self.logger.info(f'Exported {len(rows)} rows to Google Sheets tab {sheet_tab}')
+        return True
 
     @staticmethod
     def _prepare_rows(data: Iterable[dict], columns: Optional[List[str]]) -> List[List[str]]:

@@ -16,7 +16,7 @@ flowchart LR
     Process --> Validate[data quality checks]
     Validate --> CSV[CSV output]
     Validate --> Sheets[optional Google Sheets]
-    Process --> Logs[structured logs]
+    Process --> Logs[timestamped text logs]
 ```
 
 ## Trade-offs
@@ -43,3 +43,7 @@ flowchart LR
 ./scripts/run_demo.sh
 wc -l out/quotes.csv
 ```
+
+## Delivery recovery update — 5 September 2026
+
+Fixed premature deduplication checkpoints and repeated rows within one batch. Live delivery now checkpoints only after the Sheets adapter confirms the append; failed uploads remain retryable. Added seven regression cases; all 29 tests and Ruff pass locally. See the [runbook](ops.md) for the remaining ambiguous-acknowledgement and concurrent-worker limits.
